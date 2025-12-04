@@ -1,7 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // The specific model for image editing/generation as per instructions
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
@@ -11,6 +9,8 @@ export const generateEditedImage = async (
   prompt: string
 ): Promise<string> => {
   try {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
       contents: {
