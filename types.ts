@@ -15,4 +15,6 @@ export interface GeneratedImage {
   imageUrl: string;
   prompt: string;
   timestamp: number;
+  label?: string;
+  isFavorite?: boolean;
 }
