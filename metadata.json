@@ -1,0 +1,5 @@
+{
+  "name": "GenAI Image Editor",
+  "description": "A powerful AI image editor powered by Gemini 2.5 Flash Image. Upload photos and transform them using natural language prompts.",
+  "requestFramePermissions": []
+}
