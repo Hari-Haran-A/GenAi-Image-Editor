@@ -82,6 +82,12 @@ const KeyIcon = () => (
   </svg>
 );
 
+const BookIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+  </svg>
+);
+
 const ApiKeyModal = ({ 
   onClose, 
   isVercelEnv,
@@ -137,8 +143,11 @@ const ApiKeyModal = ({
           </div>
           
           <h2 className="text-xl font-bold text-white">
-            API Key Configuration
+            API Key Required
           </h2>
+          <p className="text-sm text-slate-400">
+            To generate images with Gemini 2.5, you need to provide a valid API key.
+          </p>
           
           <div className="w-full text-left space-y-4 mt-2">
             
@@ -162,9 +171,12 @@ const ApiKeyModal = ({
                    </Button>
                  )}
                </div>
-               <p className="text-xs text-slate-500">
-                 Stored locally in your browser for this session.
-               </p>
+               <div className="flex justify-between items-center text-xs mt-2">
+                  <span className="text-slate-500">Stored locally in browser.</span>
+                  <a href="https://ai.google.dev/gemini-api/docs/setup" target="_blank" rel="noreferrer" className="flex items-center gap-1 text-banana-400 hover:underline">
+                    <BookIcon /> API Key Setup Guide &rarr;
+                  </a>
+               </div>
              </div>
 
             <div className="relative py-2">
@@ -178,8 +190,11 @@ const ApiKeyModal = ({
                  <div className="bg-slate-950 p-3 rounded-lg border border-slate-700 font-mono text-xs select-all text-slate-300">
                     API_KEY=your_key_here
                  </div>
-                 <div className="text-xs text-slate-500">
-                   Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.
+                 <div className="text-xs text-slate-500 flex flex-col gap-1">
+                   <span>Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.</span>
+                   <a href="https://ai.google.dev/gemini-api/docs/setup" target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white underline">
+                     Need help? View Setup Guide
+                   </a>
                  </div>
               </div>
             ) : (
@@ -227,6 +242,9 @@ export default function App() {
       const storedKey = localStorage.getItem('gemini_api_key');
       if (storedKey) {
         setApiKey(storedKey);
+      } else if (!process.env.API_KEY) {
+        // If no stored key and no environment key, automatically open modal
+        setShowApiKeyModal(true);
       }
 
       // Load App State
