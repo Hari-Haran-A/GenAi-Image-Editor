@@ -6,15 +6,15 @@ const MODEL_NAME = 'gemini-2.5-flash-image';
 export const generateEditedImage = async (
   base64Image: string,
   mimeType: string,
-  prompt: string
+  prompt: string,
+  customApiKey?: string
 ): Promise<string> => {
   try {
-    // Strictly use the environment variable as requested
-    // You must ensure process.env.API_KEY is defined in your build environment
-    const apiKey = process.env.API_KEY;
+    // Prioritize the custom key (from UI), fallback to env var
+    const apiKey = customApiKey || process.env.API_KEY;
     
     if (!apiKey) {
-      throw new Error("API_KEY_MISSING: The API key is not configured in the source code or environment variables.");
+      throw new Error("API_KEY_MISSING");
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -66,6 +66,9 @@ export const generateEditedImage = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    if (error.message.includes("API_KEY_MISSING")) {
+        throw new Error("API_KEY_MISSING");
+    }
     throw new Error(error.message || "Failed to edit image.");
   }
 };

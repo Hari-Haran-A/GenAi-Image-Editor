@@ -76,6 +76,116 @@ const XMarkIcon = () => (
   </svg>
 );
 
+const KeyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+  </svg>
+);
+
+const EyeIcon = ({ off }: { off?: boolean }) => {
+  if (off) {
+    return (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+      </svg>
+    );
+  }
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  );
+};
+
+// API Key Modal Component
+const ApiKeyModal = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  initialKey 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSave: (key: string) => void;
+  initialKey: string;
+}) => {
+  const [key, setKey] = useState(initialKey);
+  const [showKey, setShowKey] = useState(false);
+
+  useEffect(() => {
+    setKey(initialKey);
+  }, [initialKey]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+      <div className="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 border-b border-slate-700 bg-slate-800/50">
+          <div className="w-12 h-12 bg-banana-500/10 rounded-xl flex items-center justify-center mb-4 text-banana-400">
+            <KeyIcon />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Configure API Key</h2>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            The application failed to find an API key in the environment. Please enter your Google Gemini API key to continue.
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <a 
+            href="https://aistudio.google.com/app/apikey" 
+            target="_blank" 
+            rel="noreferrer"
+            className="flex items-center justify-between p-4 bg-banana-500/10 hover:bg-banana-500/20 border border-banana-500/20 hover:border-banana-500/40 rounded-xl transition-all group"
+          >
+            <div>
+              <p className="font-semibold text-banana-200 group-hover:text-banana-100">Get API Key</p>
+              <p className="text-xs text-banana-500/70 group-hover:text-banana-400">Google AI Studio</p>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-banana-400 transform group-hover:translate-x-1 transition-transform">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </a>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+              Enter your key
+            </label>
+            <div className="relative">
+              <input
+                type={showKey ? "text" : "password"}
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-slate-200 placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500/50 focus:border-banana-500 outline-none transition-all font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+              >
+                <EyeIcon off={showKey} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+          <Button 
+            variant="primary" 
+            onClick={() => onSave(key.trim())}
+            disabled={!key.trim()}
+            className="w-full"
+          >
+            Save API Key
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
   const [prompt, setPrompt] = useState<string>('');
@@ -85,12 +195,20 @@ export default function App() {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState<string>('');
 
+  // API Key State
+  const [apiKey, setApiKey] = useState<string>('');
+  const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // Load state from localStorage on mount
   useEffect(() => {
     try {
+      // Load API Key
+      const storedKey = localStorage.getItem('gemini_api_key');
+      if (storedKey) setApiKey(storedKey);
+
       // Load App State
       const savedState = localStorage.getItem('genai-editor-state');
       if (savedState) {
@@ -127,6 +245,12 @@ export default function App() {
         console.error("Critical storage failure", e2);
       }
     }
+  };
+
+  const handleSaveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem('gemini_api_key', key);
+    setShowApiKeyModal(false);
   };
 
   // Auto-save effects
@@ -204,13 +328,22 @@ export default function App() {
   const handleGenerate = async () => {
     if (!selectedImage || !prompt.trim()) return;
 
+    // Check if we need a key
+    // We check purely for existence here, validation happens in service
+    // If process.env.API_KEY is missing (undefined) AND apiKey state is empty, prompt user.
+    if (!process.env.API_KEY && !apiKey) {
+        setShowApiKeyModal(true);
+        return;
+    }
+
     setEditState({ status: 'loading' });
 
     try {
       const resultImageUrl = await generateEditedImage(
         selectedImage.base64,
         selectedImage.mimeType,
-        prompt
+        prompt,
+        apiKey // Pass the manual key if available
       );
       
       const newGeneratedImage: GeneratedImage = {
@@ -225,10 +358,16 @@ export default function App() {
       setHistory(prev => [newGeneratedImage, ...prev]);
       setEditState({ status: 'success' });
     } catch (error: any) {
-       setEditState({ 
-          status: 'error', 
-          errorMessage: error.message || 'An unknown error occurred' 
-        });
+       console.error("Generation error:", error);
+       if (error.message === 'API_KEY_MISSING' || error.message.includes('API_KEY_MISSING')) {
+           setShowApiKeyModal(true);
+           setEditState({ status: 'idle' });
+       } else {
+           setEditState({ 
+              status: 'error', 
+              errorMessage: error.message || 'An unknown error occurred' 
+            });
+       }
     }
   };
 
@@ -334,6 +473,14 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans">
       
+      {/* API Key Modal */}
+      <ApiKeyModal 
+        isOpen={showApiKeyModal} 
+        onClose={() => setShowApiKeyModal(false)}
+        onSave={handleSaveApiKey}
+        initialKey={apiKey}
+      />
+
       {/* Navbar / Header */}
       <div className="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-5 flex items-center justify-between">
@@ -346,6 +493,15 @@ export default function App() {
               <p className="text-slate-400 text-xs md:text-sm font-medium">Powered by Gemini 2.5</p>
             </div>
           </div>
+          
+          {/* Settings / API Key Button */}
+          <button 
+             onClick={() => setShowApiKeyModal(true)}
+             className={`p-2 rounded-lg transition-colors border ${apiKey ? 'text-banana-400 border-banana-500/30 bg-banana-500/10' : 'text-slate-400 border-slate-700 hover:text-white'}`}
+             title="Configure API Key"
+          >
+             <KeyIcon />
+          </button>
         </div>
       </div>
 
