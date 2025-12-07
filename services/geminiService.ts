@@ -3,6 +3,31 @@ import { GoogleGenAI } from "@google/genai";
 // The specific model for image editing/generation as per instructions
 const MODEL_NAME = 'gemini-2.5-flash-image';
 
+// Helper to sanitize keys (remove whitespace, newlines, invisible chars)
+const sanitizeKey = (key: string | undefined): string | undefined => {
+  if (!key) return undefined;
+  return key.replace(/\s+/g, '').trim();
+};
+
+export const validateApiKey = async (apiKey: string): Promise<boolean> => {
+  const cleanKey = sanitizeKey(apiKey);
+  if (!cleanKey) return false;
+
+  try {
+    const ai = new GoogleGenAI({ apiKey: cleanKey });
+    // Minimal request to check auth using a cheap text model
+    await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: { parts: [{ text: 'test' }] },
+      config: { maxOutputTokens: 1 }
+    });
+    return true;
+  } catch (error: any) {
+    console.warn("API Key Validation Failed:", error.message);
+    return false;
+  }
+};
+
 export const generateEditedImage = async (
   base64Image: string,
   mimeType: string,
@@ -11,8 +36,8 @@ export const generateEditedImage = async (
 ): Promise<string> => {
   try {
     // Prioritize custom user key, fall back to environment variable
-    // Ensure we trim whitespace which is a common copy-paste error on mobile
-    const apiKey = customApiKey?.trim() || process.env.API_KEY;
+    const cleanCustomKey = sanitizeKey(customApiKey);
+    const apiKey = cleanCustomKey || process.env.API_KEY;
     
     // Explicitly check for API key to handle browser/deployment environments gracefully
     if (!apiKey) {

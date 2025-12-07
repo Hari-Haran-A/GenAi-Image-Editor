@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './components/Button';
-import { generateEditedImage } from './services/geminiService';
+import { generateEditedImage, validateApiKey } from './services/geminiService';
 import { ImageFile, EditState, GeneratedImage } from './types';
 
 // Icons
@@ -115,15 +115,31 @@ const ApiKeyModal = ({
   error?: string;
 }) => {
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [inputKey, setInputKey] = useState(currentKey || '');
   const [showKey, setShowKey] = useState(false);
+  const [validationError, setValidationError] = useState<string>('');
+
+  // Update input key if currentKey changes externally
+  useEffect(() => {
+    if (currentKey) setInputKey(currentKey);
+  }, [currentKey]);
+
+  // Aggressive key cleaning to fix mobile copy-paste issues
+  const cleanKey = (val: string) => val.replace(/\s+/g, '').trim();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    // Automatically strip whitespace if the user pastes
+    setInputKey(cleanKey(rawVal));
+    setValidationError('');
+  };
 
   const handleConnect = async () => {
     if ((window as any).aistudio) {
       setLoading(true);
       try {
         await (window as any).aistudio.openSelectKey();
-        // Wait a moment for the key to register
         setTimeout(() => {
           onClose();
           setLoading(false);
@@ -135,21 +151,44 @@ const ApiKeyModal = ({
     }
   };
 
-  const handleSaveManual = () => {
-    if (inputKey.trim()) {
-      onSaveKey(inputKey.trim());
-      onClose();
+  const handleSaveManual = async () => {
+    const cleaned = cleanKey(inputKey);
+    if (!cleaned) return;
+
+    // Client-side format check (basic "AIza" check)
+    if (!cleaned.startsWith("AIza")) {
+      setValidationError("Invalid Key Format: Google API keys usually start with 'AIza'. Please check your key.");
+      return;
+    }
+
+    setVerifying(true);
+    setValidationError('');
+
+    try {
+      // Actually test the key against Gemini
+      const isValid = await validateApiKey(cleaned);
+      if (isValid) {
+        onSaveKey(cleaned);
+        onClose();
+      } else {
+        setValidationError("Key rejected by Google API. Please check permissions or try a new key.");
+      }
+    } catch (e) {
+      setValidationError("Validation failed. Please check your internet connection.");
+    } finally {
+      setVerifying(false);
     }
   };
 
   const handleClearKey = () => {
     onSaveKey('');
     setInputKey('');
+    setValidationError('');
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white">
           <XMarkIcon />
         </button>
@@ -176,11 +215,12 @@ const ApiKeyModal = ({
             <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
           </a>
 
-          {error && (
-            <div className="w-full bg-red-900/30 border border-red-500/30 rounded-lg p-3 text-left">
-              <p className="text-red-300 text-xs flex gap-2 items-start">
+          {/* Show Errors (Prop-passed or Local Validation) */}
+          {(error || validationError) && (
+            <div className="w-full bg-red-900/30 border border-red-500/30 rounded-lg p-3 text-left animate-pulse">
+              <p className="text-red-300 text-xs flex gap-2 items-start font-medium">
                 <span className="mt-0.5 shrink-0"><XMarkIcon /></span>
-                {error}
+                {validationError || error}
               </p>
             </div>
           )}
@@ -194,9 +234,9 @@ const ApiKeyModal = ({
                  <input 
                    type={showKey ? "text" : "password"}
                    value={inputKey}
-                   onChange={(e) => setInputKey(e.target.value)}
+                   onChange={handleInputChange}
                    placeholder="AIzaSy..."
-                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500 focus:outline-none"
+                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500 focus:outline-none font-mono text-sm"
                  />
                  <button 
                    onClick={() => setShowKey(!showKey)}
@@ -208,8 +248,13 @@ const ApiKeyModal = ({
                </div>
                
                <div className="flex gap-2">
-                 <Button onClick={handleSaveManual} className="flex-1 py-2 text-sm" disabled={!inputKey.trim()}>
-                   Save Key
+                 <Button 
+                    onClick={handleSaveManual} 
+                    className="flex-1 py-2 text-sm" 
+                    disabled={!inputKey.trim() || verifying}
+                    isLoading={verifying}
+                 >
+                   {verifying ? 'Verifying...' : 'Verify & Save Key'}
                  </Button>
                  {currentKey && (
                    <Button onClick={handleClearKey} variant="secondary" className="px-3 py-2 text-sm text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10">
@@ -311,15 +356,12 @@ export default function App() {
       
       const mergedState = { ...currentState, ...newState };
       
-      // Simple quota management: Limit history length if needed, or remove heavy image data if we hit limits
-      // For this demo, we'll try to save everything but handle the error if it's too big
+      // Simple quota management
       localStorage.setItem('genai-editor-state', JSON.stringify(mergedState));
     } catch (e) {
       console.warn("Storage quota exceeded or save failed. Clearing heavy image data.");
       // Fallback: Try saving only text data
       try {
-        const { history, generatedImage, ...rest } = newState as any;
-        // Strip base64 from history if needed, or just save current prompt
         localStorage.setItem('genai-editor-state', JSON.stringify({ 
            prompt: newState.prompt 
         }));
@@ -443,10 +485,12 @@ export default function App() {
         setShowApiKeyModal(true);
       } else if (error.message === 'INVALID_API_KEY') {
         setEditState({ status: 'idle' });
-        setApiKeyError('The API key provided is invalid. Please check for extra spaces or characters and try again.');
-        // Automatically open the modal to let them fix it
+        // Force clear the bad key so user has to re-enter
+        setApiKey('');
+        localStorage.removeItem('gemini_api_key');
+        
+        setApiKeyError('The API key provided is invalid. Please copy a fresh key from AI Studio and try again.');
         setShowApiKeyModal(true);
-        // We don't clear the input field in the modal (so they can edit), but we might want to flag the state
       } else {
         setEditState({ 
           status: 'error', 
