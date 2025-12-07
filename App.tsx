@@ -142,25 +142,30 @@ const ApiKeyModal = ({
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Configure AI Provider</h2>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Select your preferred AI provider and enter the corresponding API key.
+            Select your preferred AI provider. Use <strong>Google Gemini</strong> for free tier access.
           </p>
         </div>
 
         <div className="p-6 space-y-6">
           {/* Provider Selection */}
-          <div className="flex bg-slate-900 p-1 rounded-xl">
-             <button 
-               onClick={() => setProvider('google')}
-               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'google' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-             >
-               Google Gemini
-             </button>
-             <button 
-               onClick={() => setProvider('openai')}
-               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'openai' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
-             >
-               OpenAI
-             </button>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Select Provider</label>
+            <div className="flex bg-slate-900 p-1 rounded-xl">
+              <button 
+                onClick={() => setProvider('google')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex flex-col items-center justify-center ${provider === 'google' ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <span>Google Gemini</span>
+                <span className="text-[10px] text-green-400 font-normal">Free Tier Available</span>
+              </button>
+              <button 
+                onClick={() => setProvider('openai')}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all flex flex-col items-center justify-center ${provider === 'openai' ? 'bg-slate-700 text-white shadow-sm ring-1 ring-slate-600' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+              >
+                <span>OpenAI</span>
+                <span className="text-[10px] text-amber-500 font-normal">Credits Required</span>
+              </button>
+            </div>
           </div>
 
           {provider === 'google' ? (
@@ -172,8 +177,8 @@ const ApiKeyModal = ({
                     className="flex items-center justify-between p-4 bg-banana-500/10 hover:bg-banana-500/20 border border-banana-500/20 hover:border-banana-500/40 rounded-xl transition-all group"
                 >
                     <div>
-                    <p className="font-semibold text-banana-200 group-hover:text-banana-100">Get Gemini API Key</p>
-                    <p className="text-xs text-banana-500/70 group-hover:text-banana-400">Google AI Studio</p>
+                    <p className="font-semibold text-banana-200 group-hover:text-banana-100">Get Free Gemini API Key</p>
+                    <p className="text-xs text-banana-500/70 group-hover:text-banana-400">Google AI Studio (Free Tier)</p>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-banana-400 transform group-hover:translate-x-1 transition-transform">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -199,6 +204,9 @@ const ApiKeyModal = ({
                         <EyeIcon off={showKey} />
                     </button>
                     </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                        Tip: Google's free tier has rate limits. The app handles retries automatically.
+                    </p>
                 </div>
              </div>
           ) : (
@@ -211,7 +219,7 @@ const ApiKeyModal = ({
                 >
                     <div>
                     <p className="font-semibold text-emerald-200 group-hover:text-emerald-100">Get OpenAI API Key</p>
-                    <p className="text-xs text-emerald-500/70 group-hover:text-emerald-400">OpenAI Platform</p>
+                    <p className="text-xs text-emerald-500/70 group-hover:text-emerald-400">OpenAI Platform (Paid)</p>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-emerald-400 transform group-hover:translate-x-1 transition-transform">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -238,7 +246,7 @@ const ApiKeyModal = ({
                     </button>
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
-                        Note: OpenAI edits require square images. Images will be auto-cropped if necessary.
+                        Note: Requires a paid OpenAI account with available credits.
                     </p>
                 </div>
              </div>
@@ -393,6 +401,18 @@ export default function App() {
     }
   };
 
+  const switchToFreeTier = () => {
+      setProvider('google');
+      localStorage.setItem('ai_provider', 'google');
+      if (!googleApiKey && !process.env.API_KEY) {
+          setShowApiKeyModal(true);
+      } else {
+          // If we have a key (or environment key), retry generation immediately would be nice, 
+          // but for now just clear error so user can click generate again.
+          setEditState({ status: 'idle' });
+      }
+  };
+
   const handleGenerate = async () => {
     if (!selectedImage || !prompt.trim()) return;
 
@@ -455,7 +475,7 @@ export default function App() {
        }
        
        if (errorMessage === 'BILLING_LIMIT_REACHED') {
-           errorMessage = 'Billing limit reached. Please check your OpenAI account credits.';
+           errorMessage = 'Billing limit reached. OpenAI requires paid credits.';
        }
        
        if (errorMessage === 'NETWORK_ERROR') {
@@ -684,11 +704,21 @@ export default function App() {
                       <div className={`mt-0.5 ${editState.errorMessage?.includes('Billing') ? 'text-amber-500' : 'text-red-400'}`}>
                          {editState.errorMessage?.includes('Billing') || editState.errorMessage?.includes('Rate') ? <AlertIcon /> : <XMarkIcon />}
                       </div>
-                      <div>
+                      <div className="flex-1">
                          <p className={`font-medium text-sm ${editState.errorMessage?.includes('Billing') ? 'text-amber-200' : 'text-red-200'}`}>
                             {editState.errorMessage?.includes('Billing') ? 'Account Quota Issue' : (editState.errorMessage?.includes('Rate') ? 'Rate Limit Reached' : 'Generation Failed')}
                          </p>
                          <p className={`${editState.errorMessage?.includes('Billing') ? 'text-amber-300/70' : 'text-red-300/70'} text-sm mt-1`}>{editState.errorMessage}</p>
+                         
+                         {/* Switch to Free Tier Action */}
+                         {editState.errorMessage?.includes('Billing') && provider === 'openai' && (
+                            <button 
+                                onClick={switchToFreeTier}
+                                className="mt-2 text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 px-3 py-1.5 rounded-lg transition-colors border border-amber-500/30"
+                            >
+                                Switch to Google Gemini (Free)
+                            </button>
+                         )}
                       </div>
                     </div>
                   )}
