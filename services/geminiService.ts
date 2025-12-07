@@ -9,7 +9,14 @@ export const generateEditedImage = async (
   prompt: string
 ): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    
+    // Explicitly check for API key to handle browser/deployment environments gracefully
+    if (!apiKey) {
+      throw new Error("API_KEY_MISSING");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
       model: MODEL_NAME,
@@ -58,6 +65,10 @@ export const generateEditedImage = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    // Propagate the specific API key error code if it was thrown above
+    if (error.message === "API_KEY_MISSING") {
+      throw error;
+    }
     throw new Error(error.message || "Failed to edit image.");
   }
 };

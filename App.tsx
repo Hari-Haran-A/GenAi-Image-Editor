@@ -76,6 +76,90 @@ const XMarkIcon = () => (
   </svg>
 );
 
+const KeyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+  </svg>
+);
+
+const ApiKeyModal = ({ 
+  onClose, 
+  isVercelEnv 
+}: { 
+  onClose: () => void;
+  isVercelEnv: boolean;
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleConnect = async () => {
+    if (window.aistudio) {
+      setLoading(true);
+      try {
+        await window.aistudio.openSelectKey();
+        // Wait a moment for the key to register
+        setTimeout(() => {
+          onClose();
+          setLoading(false);
+        }, 1000);
+      } catch (e) {
+        console.error("Failed to select key", e);
+        setLoading(false);
+      }
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="w-16 h-16 bg-banana-400/10 rounded-full flex items-center justify-center text-banana-400">
+            <KeyIcon />
+          </div>
+          <h2 className="text-xl font-bold text-white">API Key Required</h2>
+          
+          {isVercelEnv ? (
+            <div className="text-slate-300 text-sm space-y-4">
+              <p>
+                To use this application on Vercel, you must set the Environment Variable.
+              </p>
+              <div className="bg-slate-900 p-3 rounded-lg border border-slate-700 font-mono text-xs text-left">
+                Key: API_KEY<br/>
+                Value: [Your Gemini API Key]
+              </div>
+              <p className="text-xs text-slate-500">
+                Go to your Vercel Project Settings &gt; Environment Variables to add it.
+              </p>
+              <Button onClick={onClose} variant="secondary" className="w-full mt-4">
+                I've Added It
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-slate-300">
+                To generate images, you need to connect your Google Cloud Project with a valid Gemini API key.
+              </p>
+              <Button 
+                onClick={handleConnect} 
+                isLoading={loading}
+                className="w-full"
+              >
+                Connect Google Account
+              </Button>
+              <p className="text-xs text-slate-500 mt-2">
+                This will open a secure dialog to select your project.
+                <br/>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-banana-400">
+                  Billing information
+                </a>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
   const [prompt, setPrompt] = useState<string>('');
@@ -84,9 +168,27 @@ export default function App() {
   const [editState, setEditState] = useState<EditState>({ status: 'idle' });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState<string>('');
+  
+  // API Key State
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [hasCheckedKey, setHasCheckedKey] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  // Check for API Key on mount
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          setShowApiKeyModal(true);
+        }
+      }
+      setHasCheckedKey(true);
+    };
+    checkKey();
+  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -149,6 +251,15 @@ export default function App() {
   const handleGenerate = async () => {
     if (!selectedImage || !prompt.trim()) return;
 
+    // Pre-check for API key availability if in AI Studio
+    if (window.aistudio) {
+      const hasKey = await window.aistudio.hasSelectedApiKey();
+      if (!hasKey) {
+        setShowApiKeyModal(true);
+        return;
+      }
+    }
+
     setEditState({ status: 'loading' });
     try {
       const resultImageUrl = await generateEditedImage(
@@ -169,10 +280,15 @@ export default function App() {
       setHistory(prev => [newGeneratedImage, ...prev]);
       setEditState({ status: 'success' });
     } catch (error: any) {
-      setEditState({ 
-        status: 'error', 
-        errorMessage: error.message || 'An unknown error occurred' 
-      });
+      if (error.message === 'API_KEY_MISSING') {
+        setEditState({ status: 'idle' });
+        setShowApiKeyModal(true);
+      } else {
+        setEditState({ 
+          status: 'error', 
+          errorMessage: error.message || 'An unknown error occurred' 
+        });
+      }
     }
   };
 
@@ -274,6 +390,14 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans">
       
+      {/* API Key Modal */}
+      {showApiKeyModal && (
+        <ApiKeyModal 
+          onClose={() => setShowApiKeyModal(false)} 
+          isVercelEnv={typeof window.aistudio === 'undefined'}
+        />
+      )}
+
       {/* Navbar / Header */}
       <div className="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-5 flex items-center justify-between">
@@ -286,7 +410,9 @@ export default function App() {
               <p className="text-slate-400 text-xs md:text-sm font-medium">Powered by Gemini 2.5</p>
             </div>
           </div>
-          {/* Optional: Add user/settings menu here in future */}
+          <Button variant="ghost" onClick={() => setShowApiKeyModal(true)} className="text-xs text-slate-500 hover:text-banana-400">
+             <KeyIcon />
+          </Button>
         </div>
       </div>
 
