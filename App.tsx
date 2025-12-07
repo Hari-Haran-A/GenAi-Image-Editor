@@ -92,10 +92,10 @@ const ApiKeyModal = ({
   const [loading, setLoading] = useState(false);
 
   const handleConnect = async () => {
-    if (window.aistudio) {
+    if ((window as any).aistudio) {
       setLoading(true);
       try {
-        await window.aistudio.openSelectKey();
+        await (window as any).aistudio.openSelectKey();
         // Wait a moment for the key to register
         setTimeout(() => {
           onClose();
@@ -110,27 +110,44 @@ const ApiKeyModal = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
         <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 bg-banana-400/10 rounded-full flex items-center justify-center text-banana-400">
+          <div className="w-16 h-16 bg-banana-400/10 rounded-full flex items-center justify-center text-banana-400 ring-1 ring-banana-400/20">
             <KeyIcon />
           </div>
-          <h2 className="text-xl font-bold text-white">API Key Required</h2>
+          
+          <h2 className="text-xl font-bold text-white">
+            {isVercelEnv ? "Missing API Configuration" : "Connect Google Account"}
+          </h2>
           
           {isVercelEnv ? (
-            <div className="text-slate-300 text-sm space-y-4">
+            <div className="text-slate-300 text-sm space-y-4 text-left w-full">
               <p>
-                To use this application on Vercel, you must set the Environment Variable.
+                The application could not find the <code>API_KEY</code> environment variable. 
+                To generate images using Gemini 2.5 Flash, you must configure this in your deployment settings.
               </p>
-              <div className="bg-slate-900 p-3 rounded-lg border border-slate-700 font-mono text-xs text-left">
-                Key: API_KEY<br/>
-                Value: [Your Gemini API Key]
+              
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-3">
+                <h4 className="font-semibold text-slate-200">How to fix this:</h4>
+                <ol className="list-decimal list-inside space-y-2 text-slate-400">
+                  <li>
+                    Get a free API Key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.
+                  </li>
+                  <li>
+                    Go to your Vercel/Netlify project settings.
+                  </li>
+                  <li>
+                    Add a new Environment Variable:
+                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-700 font-mono text-xs mt-2 select-all text-slate-300">
+                      API_KEY=your_actual_api_key_here
+                    </div>
+                  </li>
+                  <li>Redeploy or restart the application.</li>
+                </ol>
               </div>
-              <p className="text-xs text-slate-500">
-                Go to your Vercel Project Settings &gt; Environment Variables to add it.
-              </p>
-              <Button onClick={onClose} variant="secondary" className="w-full mt-4">
-                I've Added It
+
+              <Button onClick={onClose} variant="secondary" className="w-full mt-2">
+                I've Updated It (Try Again)
               </Button>
             </div>
           ) : (
@@ -171,24 +188,9 @@ export default function App() {
   
   // API Key State
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [hasCheckedKey, setHasCheckedKey] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
-
-  // Check for API Key on mount
-  useEffect(() => {
-    const checkKey = async () => {
-      if (window.aistudio) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey) {
-          setShowApiKeyModal(true);
-        }
-      }
-      setHasCheckedKey(true);
-    };
-    checkKey();
-  }, []);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -251,15 +253,6 @@ export default function App() {
   const handleGenerate = async () => {
     if (!selectedImage || !prompt.trim()) return;
 
-    // Pre-check for API key availability if in AI Studio
-    if (window.aistudio) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        setShowApiKeyModal(true);
-        return;
-      }
-    }
-
     setEditState({ status: 'loading' });
     try {
       const resultImageUrl = await generateEditedImage(
@@ -309,6 +302,12 @@ export default function App() {
     setEditState({ status: 'idle' });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (history.length > 0 && window.confirm("Are you sure you want to clear all history?")) {
+      setHistory([]);
     }
   };
 
@@ -375,16 +374,12 @@ export default function App() {
     }
   };
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
   const suggestedPrompts = [
-    "Make it a watercolor painting",
-    "Add a sci-fi cyberpunk background",
-    "Turn this into a pencil sketch",
-    "Add a cute cat next to the person",
-    "Change the lighting to sunset golden hour"
+    { label: "Add Retro Filter", text: "Add a retro filter" },
+    { label: "Remove Person", text: "Remove the person in the background" },
+    { label: "Watercolor", text: "Make it a watercolor painting" },
+    { label: "Sci-Fi Background", text: "Add a sci-fi cyberpunk background" },
+    { label: "Dreamy Scrapbook", text: "A dreamy scrapbook aesthetic collage of a cute young girl with short hair in a shiny pastel pink saree. Multiple angles and poses: sitting and smiling, holding a light, and a close up. White grid background, cut-out photo effect with white borders. Decorated with stickers: pastel bows, flowers, hearts, butterflies. Soft lighting, smooth skin, feminine aesthetic, Pinterest-style moodboard, ultra high quality." }
   ];
 
   return (
@@ -394,7 +389,7 @@ export default function App() {
       {showApiKeyModal && (
         <ApiKeyModal 
           onClose={() => setShowApiKeyModal(false)} 
-          isVercelEnv={typeof window.aistudio === 'undefined'}
+          isVercelEnv={typeof (window as any).aistudio === 'undefined'}
         />
       )}
 
@@ -505,10 +500,11 @@ export default function App() {
                     {suggestedPrompts.map((p, i) => (
                       <button 
                         key={i}
-                        onClick={() => setPrompt(p)}
+                        onClick={() => setPrompt(p.text)}
                         className="text-xs sm:text-sm bg-slate-700/40 hover:bg-slate-700 hover:text-white text-slate-400 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-slate-600"
+                        title={p.text}
                       >
-                        {p}
+                        {p.label}
                       </button>
                     ))}
                   </div>
@@ -639,8 +635,14 @@ export default function App() {
                 <div className="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/80">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                     <HistoryIcon /> Recent Edits
+                    <span className="bg-slate-900 text-slate-500 text-xs px-2 py-1 rounded-full ml-1">{history.length}</span>
                   </h3>
-                  <span className="bg-slate-900 text-slate-500 text-xs px-2 py-1 rounded-full">{history.length}</span>
+                  <button 
+                    onClick={handleClearHistory}
+                    className="text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors"
+                  >
+                    Clear All
+                  </button>
                 </div>
                 
                 <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
