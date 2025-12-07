@@ -4,6 +4,9 @@ import { AIProvider } from "../types";
 // The specific model for image editing/generation as per instructions
 const GEMINI_MODEL_NAME = 'gemini-2.5-flash-image';
 
+// Helper for delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // Helper to resize/crop for OpenAI (OpenAI requires square PNGs < 4MB)
 const prepareImageForOpenAI = async (base64: string, mimeType: string): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -68,51 +71,75 @@ export const generateEditedImage = async (
     const key = cleanKey || process.env.API_KEY;
     if (!key) throw new Error("API_KEY_MISSING");
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: key });
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL_NAME,
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: base64Image,
-                mimeType: mimeType,
-              },
-            },
-            { text: prompt },
-          ],
-        },
-      });
+    let lastError: any = null;
+    let retryDelay = 2000; // Start with 2 seconds
 
-      const parts = response.candidates?.[0]?.content?.parts;
-      if (!parts) throw new Error("No content generated.");
+    // Retry loop for rate limits
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const ai = new GoogleGenAI({ apiKey: key });
+            const response = await ai.models.generateContent({
+                model: GEMINI_MODEL_NAME,
+                contents: {
+                parts: [
+                    {
+                    inlineData: {
+                        data: base64Image,
+                        mimeType: mimeType,
+                    },
+                    },
+                    { text: prompt },
+                ],
+                },
+            });
 
-      let foundImageBase64: string | null = null;
-      for (const part of parts) {
-        if (part.inlineData && part.inlineData.data) {
-          foundImageBase64 = part.inlineData.data;
-          break; 
+            const parts = response.candidates?.[0]?.content?.parts;
+            if (!parts) throw new Error("No content generated.");
+
+            let foundImageBase64: string | null = null;
+            for (const part of parts) {
+                if (part.inlineData && part.inlineData.data) {
+                foundImageBase64 = part.inlineData.data;
+                break; 
+                }
+            }
+
+            if (foundImageBase64) {
+                return `data:image/png;base64,${foundImageBase64}`;
+            } else {
+                const textPart = parts.find(p => p.text);
+                if (textPart?.text) throw new Error(`Model returned text: ${textPart.text}`);
+                throw new Error("No image returned.");
+            }
+        } catch (error: any) {
+            console.warn(`Gemini Attempt ${attempt + 1} failed:`, error);
+            lastError = error;
+            
+            const msg = error.message || error.toString();
+            // Check for retryable errors: 429 (Too Many Requests) or 503 (Service Unavailable)
+            if (error.status === 429 || msg.includes('429') || error.status === 503 || msg.includes('503')) {
+                if (attempt < 2) { // Don't wait after the last attempt
+                    console.log(`Waiting ${retryDelay}ms before retry...`);
+                    await delay(retryDelay);
+                    retryDelay *= 2; // Exponential backoff: 2s -> 4s -> 8s
+                    continue;
+                }
+            }
+            // If it's not a retryable error (e.g. 400 Bad Request), break immediately
+            break;
         }
-      }
+    }
 
-      if (foundImageBase64) {
-        return `data:image/png;base64,${foundImageBase64}`;
-      } else {
-        const textPart = parts.find(p => p.text);
-        if (textPart?.text) throw new Error(`Model returned text: ${textPart.text}`);
-        throw new Error("No image returned.");
-      }
-    } catch (error: any) {
-      console.error("Gemini API Error:", error);
-      
-      // Standardize errors
-      const msg = error.message || error.toString();
-      if (error.status === 429 || msg.includes('429')) throw new Error("QUOTA_EXCEEDED");
-      if (msg.includes("API_KEY") || error.status === 400) throw new Error("INVALID_API_KEY");
-      if (msg.includes("Failed to fetch")) throw new Error("NETWORK_ERROR");
-      
-      throw error;
+    // If we exit the loop without returning, handle the last error
+    if (lastError) {
+        console.error("Gemini Final Error:", lastError);
+        const msg = lastError.message || lastError.toString();
+        
+        if (lastError.status === 429 || msg.includes('429')) throw new Error("QUOTA_EXCEEDED");
+        if (msg.includes("API_KEY") || lastError.status === 400) throw new Error("INVALID_API_KEY");
+        if (msg.includes("Failed to fetch")) throw new Error("NETWORK_ERROR");
+        
+        throw lastError;
     }
   }
 
