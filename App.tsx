@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './components/Button';
-import { generateEditedImage, validateApiKey } from './services/geminiService';
+import { generateEditedImage } from './services/geminiService';
 import { ImageFile, EditState, GeneratedImage } from './types';
 
 // Icons
@@ -76,234 +76,6 @@ const XMarkIcon = () => (
   </svg>
 );
 
-const KeyIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-  </svg>
-);
-
-const BookIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-  </svg>
-);
-
-const EyeIcon = ({ visible }: { visible: boolean }) => (
-  visible ? (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ) : (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-    </svg>
-  )
-);
-
-const ApiKeyModal = ({ 
-  onClose, 
-  isVercelEnv,
-  onSaveKey,
-  currentKey,
-  error
-}: { 
-  onClose: () => void;
-  isVercelEnv: boolean;
-  onSaveKey: (key: string) => void;
-  currentKey: string;
-  error?: string;
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [inputKey, setInputKey] = useState(currentKey || '');
-  const [showKey, setShowKey] = useState(false);
-  const [validationError, setValidationError] = useState<string>('');
-
-  // Update input key if currentKey changes externally
-  useEffect(() => {
-    if (currentKey) setInputKey(currentKey);
-  }, [currentKey]);
-
-  // Aggressive key cleaning to fix mobile copy-paste issues
-  const cleanKey = (val: string) => val.replace(/\s+/g, '').trim();
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawVal = e.target.value;
-    // Automatically strip whitespace if the user pastes
-    setInputKey(cleanKey(rawVal));
-    setValidationError('');
-  };
-
-  const handleConnect = async () => {
-    if ((window as any).aistudio) {
-      setLoading(true);
-      try {
-        await (window as any).aistudio.openSelectKey();
-        setTimeout(() => {
-          onClose();
-          setLoading(false);
-        }, 1000);
-      } catch (e) {
-        console.error("Failed to select key", e);
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleSaveManual = async () => {
-    const cleaned = cleanKey(inputKey);
-    if (!cleaned) return;
-
-    // Client-side format check (basic "AIza" check)
-    if (!cleaned.startsWith("AIza")) {
-      setValidationError("Invalid Key Format: Google API keys usually start with 'AIza'. Please check your key.");
-      return;
-    }
-
-    setVerifying(true);
-    setValidationError('');
-
-    try {
-      // Actually test the key against Gemini
-      const isValid = await validateApiKey(cleaned);
-      if (isValid) {
-        onSaveKey(cleaned);
-        onClose();
-      } else {
-        setValidationError("Key rejected by Google API. Please check permissions or try a new key.");
-      }
-    } catch (e) {
-      setValidationError("Validation failed. Please check your internet connection.");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleClearKey = () => {
-    onSaveKey('');
-    setInputKey('');
-    setValidationError('');
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white">
-          <XMarkIcon />
-        </button>
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-16 h-16 bg-banana-400/10 rounded-full flex items-center justify-center text-banana-400 ring-1 ring-banana-400/20">
-            <KeyIcon />
-          </div>
-          
-          <h2 className="text-xl font-bold text-white">
-            API Key Required
-          </h2>
-          <p className="text-sm text-slate-400">
-            To generate images with Gemini 2.5, you need to provide a valid API key.
-          </p>
-
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/setup" 
-            target="_blank" 
-            rel="noreferrer" 
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-xl transition-all border border-slate-600 group"
-          >
-            <BookIcon />
-            <span>Read API Key Setup Guide</span>
-            <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
-          </a>
-
-          {/* Show Errors (Prop-passed or Local Validation) */}
-          {(error || validationError) && (
-            <div className="w-full bg-red-900/30 border border-red-500/30 rounded-lg p-3 text-left animate-pulse">
-              <p className="text-red-300 text-xs flex gap-2 items-start font-medium">
-                <span className="mt-0.5 shrink-0"><XMarkIcon /></span>
-                {validationError || error}
-              </p>
-            </div>
-          )}
-          
-          <div className="w-full text-left space-y-4 mt-2">
-            
-            {/* Manual Entry Section */}
-             <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-3">
-               <label className="block text-sm font-semibold text-slate-300">Enter API Key Manually</label>
-               <div className="relative">
-                 <input 
-                   type={showKey ? "text" : "password"}
-                   value={inputKey}
-                   onChange={handleInputChange}
-                   placeholder="AIzaSy..."
-                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500 focus:outline-none font-mono text-sm"
-                 />
-                 <button 
-                   onClick={() => setShowKey(!showKey)}
-                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                   type="button"
-                 >
-                   <EyeIcon visible={showKey} />
-                 </button>
-               </div>
-               
-               <div className="flex gap-2">
-                 <Button 
-                    onClick={handleSaveManual} 
-                    className="flex-1 py-2 text-sm" 
-                    disabled={!inputKey.trim() || verifying}
-                    isLoading={verifying}
-                 >
-                   {verifying ? 'Verifying...' : 'Verify & Save Key'}
-                 </Button>
-                 {currentKey && (
-                   <Button onClick={handleClearKey} variant="secondary" className="px-3 py-2 text-sm text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10">
-                     Remove
-                   </Button>
-                 )}
-               </div>
-               <div className="flex justify-between items-center text-xs mt-2">
-                  <span className="text-slate-500">Stored locally in browser.</span>
-               </div>
-             </div>
-
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-800 px-2 text-slate-500">OR</span></div>
-            </div>
-
-            {isVercelEnv ? (
-              <div className="text-slate-300 text-sm space-y-3">
-                 <p>For permanent deployment, configure your environment variables:</p>
-                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-700 font-mono text-xs select-all text-slate-300">
-                    API_KEY=your_key_here
-                 </div>
-                 <div className="text-xs text-slate-500 flex flex-col gap-1">
-                   <span>Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.</span>
-                 </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <Button 
-                  onClick={handleConnect} 
-                  isLoading={loading}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  Connect Google Account
-                </Button>
-                <p className="text-xs text-slate-500 text-center">
-                  Securely connects via AI Studio (Preview Only)
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default function App() {
   const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
   const [prompt, setPrompt] = useState<string>('');
@@ -312,27 +84,13 @@ export default function App() {
   const [editState, setEditState] = useState<EditState>({ status: 'idle' });
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState<string>('');
-  
-  // API Key State
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKey, setApiKey] = useState<string>('');
-  const [apiKeyError, setApiKeyError] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  // Load state and API key from localStorage on mount
+  // Load state from localStorage on mount
   useEffect(() => {
     try {
-      // Load API Key
-      const storedKey = localStorage.getItem('gemini_api_key');
-      if (storedKey) {
-        setApiKey(storedKey);
-      } else if (!process.env.API_KEY) {
-        // If no stored key and no environment key, automatically open modal
-        setShowApiKeyModal(true);
-      }
-
       // Load App State
       const savedState = localStorage.getItem('genai-editor-state');
       if (savedState) {
@@ -384,16 +142,6 @@ export default function App() {
     saveToLocalStorage({ generatedImage });
   }, [generatedImage]);
 
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
-    // Clear error when new key is saved
-    setApiKeyError('');
-    if (key) {
-      localStorage.setItem('gemini_api_key', key);
-    } else {
-      localStorage.removeItem('gemini_api_key');
-    }
-  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -457,14 +205,12 @@ export default function App() {
     if (!selectedImage || !prompt.trim()) return;
 
     setEditState({ status: 'loading' });
-    setApiKeyError(''); // Clear previous errors
 
     try {
       const resultImageUrl = await generateEditedImage(
         selectedImage.base64,
         selectedImage.mimeType,
-        prompt,
-        apiKey // Pass the manual API key if present
+        prompt
       );
       
       const newGeneratedImage: GeneratedImage = {
@@ -479,24 +225,10 @@ export default function App() {
       setHistory(prev => [newGeneratedImage, ...prev]);
       setEditState({ status: 'success' });
     } catch (error: any) {
-      if (error.message === 'API_KEY_MISSING') {
-        setEditState({ status: 'idle' });
-        setApiKeyError('');
-        setShowApiKeyModal(true);
-      } else if (error.message === 'INVALID_API_KEY') {
-        setEditState({ status: 'idle' });
-        // Force clear the bad key so user has to re-enter
-        setApiKey('');
-        localStorage.removeItem('gemini_api_key');
-        
-        setApiKeyError('The API key provided is invalid. Please copy a fresh key from AI Studio and try again.');
-        setShowApiKeyModal(true);
-      } else {
-        setEditState({ 
+       setEditState({ 
           status: 'error', 
           errorMessage: error.message || 'An unknown error occurred' 
         });
-      }
     }
   };
 
@@ -602,17 +334,6 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans">
       
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <ApiKeyModal 
-          onClose={() => setShowApiKeyModal(false)} 
-          isVercelEnv={typeof (window as any).aistudio === 'undefined'}
-          onSaveKey={handleSaveApiKey}
-          currentKey={apiKey}
-          error={apiKeyError}
-        />
-      )}
-
       {/* Navbar / Header */}
       <div className="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-5 flex items-center justify-between">
@@ -625,9 +346,6 @@ export default function App() {
               <p className="text-slate-400 text-xs md:text-sm font-medium">Powered by Gemini 2.5</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={() => setShowApiKeyModal(true)} className="text-xs text-slate-500 hover:text-banana-400 flex items-center gap-2">
-             <KeyIcon /> {apiKey ? <span className="text-green-400 hidden sm:inline">• Key Set</span> : <span className="hidden sm:inline">Set Key</span>}
-          </Button>
         </div>
       </div>
 
