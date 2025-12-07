@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from './components/Button';
 import { generateEditedImage } from './services/geminiService';
-import { ImageFile, EditState, GeneratedImage } from './types';
+import { ImageFile, EditState, GeneratedImage, AIProvider } from './types';
 
 // Icons
 const UploadIcon = () => (
@@ -109,19 +109,27 @@ const ApiKeyModal = ({
   isOpen, 
   onClose, 
   onSave, 
-  initialKey 
+  initialGoogleKey,
+  initialOpenAIKey,
+  initialProvider
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  onSave: (key: string) => void;
-  initialKey: string;
+  onSave: (googleKey: string, openaiKey: string, provider: AIProvider) => void;
+  initialGoogleKey: string;
+  initialOpenAIKey: string;
+  initialProvider: AIProvider;
 }) => {
-  const [key, setKey] = useState(initialKey);
+  const [googleKey, setGoogleKey] = useState(initialGoogleKey);
+  const [openaiKey, setOpenaiKey] = useState(initialOpenAIKey);
+  const [provider, setProvider] = useState<AIProvider>(initialProvider);
   const [showKey, setShowKey] = useState(false);
 
   useEffect(() => {
-    setKey(initialKey);
-  }, [initialKey]);
+    setGoogleKey(initialGoogleKey);
+    setOpenaiKey(initialOpenAIKey);
+    setProvider(initialProvider);
+  }, [initialGoogleKey, initialOpenAIKey, initialProvider, isOpen]);
 
   if (!isOpen) return null;
 
@@ -132,59 +140,122 @@ const ApiKeyModal = ({
           <div className="w-12 h-12 bg-banana-500/10 rounded-xl flex items-center justify-center mb-4 text-banana-400">
             <KeyIcon />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Configure API Key</h2>
+          <h2 className="text-xl font-bold text-white mb-2">Configure AI Provider</h2>
           <p className="text-slate-400 text-sm leading-relaxed">
-            The application failed to find an API key in the environment. Please enter your Google Gemini API key to continue.
+            Select your preferred AI provider and enter the corresponding API key.
           </p>
         </div>
 
-        <div className="p-6 space-y-4">
-          <a 
-            href="https://aistudio.google.com/app/apikey" 
-            target="_blank" 
-            rel="noreferrer"
-            className="flex items-center justify-between p-4 bg-banana-500/10 hover:bg-banana-500/20 border border-banana-500/20 hover:border-banana-500/40 rounded-xl transition-all group"
-          >
-            <div>
-              <p className="font-semibold text-banana-200 group-hover:text-banana-100">Get API Key</p>
-              <p className="text-xs text-banana-500/70 group-hover:text-banana-400">Google AI Studio</p>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-banana-400 transform group-hover:translate-x-1 transition-transform">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </a>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-              Enter your key
-            </label>
-            <div className="relative">
-              <input
-                type={showKey ? "text" : "password"}
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder="AIzaSy..."
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-slate-200 placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500/50 focus:border-banana-500 outline-none transition-all font-mono text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
-              >
-                <EyeIcon off={showKey} />
-              </button>
-            </div>
+        <div className="p-6 space-y-6">
+          {/* Provider Selection */}
+          <div className="flex bg-slate-900 p-1 rounded-xl">
+             <button 
+               onClick={() => setProvider('google')}
+               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'google' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+             >
+               Google Gemini
+             </button>
+             <button 
+               onClick={() => setProvider('openai')}
+               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${provider === 'openai' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+             >
+               OpenAI
+             </button>
           </div>
+
+          {provider === 'google' ? (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-300">
+                <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-4 bg-banana-500/10 hover:bg-banana-500/20 border border-banana-500/20 hover:border-banana-500/40 rounded-xl transition-all group"
+                >
+                    <div>
+                    <p className="font-semibold text-banana-200 group-hover:text-banana-100">Get Gemini API Key</p>
+                    <p className="text-xs text-banana-500/70 group-hover:text-banana-400">Google AI Studio</p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-banana-400 transform group-hover:translate-x-1 transition-transform">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </a>
+                <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    Google API Key
+                    </label>
+                    <div className="relative">
+                    <input
+                        type={showKey ? "text" : "password"}
+                        value={googleKey}
+                        onChange={(e) => setGoogleKey(e.target.value)}
+                        placeholder="AIzaSy..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-slate-200 placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500/50 focus:border-banana-500 outline-none transition-all font-mono text-sm"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                    >
+                        <EyeIcon off={showKey} />
+                    </button>
+                    </div>
+                </div>
+             </div>
+          ) : (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-300">
+                <a 
+                    href="https://platform.openai.com/api-keys" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center justify-between p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 rounded-xl transition-all group"
+                >
+                    <div>
+                    <p className="font-semibold text-emerald-200 group-hover:text-emerald-100">Get OpenAI API Key</p>
+                    <p className="text-xs text-emerald-500/70 group-hover:text-emerald-400">OpenAI Platform</p>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-emerald-400 transform group-hover:translate-x-1 transition-transform">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                </a>
+                <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    OpenAI API Key
+                    </label>
+                    <div className="relative">
+                    <input
+                        type={showKey ? "text" : "password"}
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-4 pr-12 text-slate-200 placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none transition-all font-mono text-sm"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                    >
+                        <EyeIcon off={showKey} />
+                    </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                        Note: OpenAI edits require square images. Images will be auto-cropped if necessary.
+                    </p>
+                </div>
+             </div>
+          )}
+
         </div>
 
         <div className="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+           <Button variant="ghost" onClick={onClose} className="text-slate-400 hover:text-white">
+             Cancel
+           </Button>
           <Button 
             variant="primary" 
-            onClick={() => onSave(key.trim())}
-            disabled={!key.trim()}
-            className="w-full"
+            onClick={() => onSave(googleKey.trim(), openaiKey.trim(), provider)}
+            className="flex-1"
           >
-            Save API Key
+            Save Configuration
           </Button>
         </div>
       </div>
@@ -201,8 +272,10 @@ export default function App() {
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState<string>('');
 
-  // API Key State
-  const [apiKey, setApiKey] = useState<string>('');
+  // API Key & Provider State
+  const [googleApiKey, setGoogleApiKey] = useState<string>('');
+  const [openaiApiKey, setOpenaiApiKey] = useState<string>('');
+  const [provider, setProvider] = useState<AIProvider>('google');
   const [showApiKeyModal, setShowApiKeyModal] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -211,9 +284,14 @@ export default function App() {
   // Load state from localStorage on mount
   useEffect(() => {
     try {
-      // Load API Key
-      const storedKey = localStorage.getItem('gemini_api_key');
-      if (storedKey) setApiKey(storedKey);
+      // Load API Keys
+      const storedGoogleKey = localStorage.getItem('gemini_api_key');
+      const storedOpenaiKey = localStorage.getItem('openai_api_key');
+      const storedProvider = localStorage.getItem('ai_provider') as AIProvider;
+      
+      if (storedGoogleKey) setGoogleApiKey(storedGoogleKey);
+      if (storedOpenaiKey) setOpenaiApiKey(storedOpenaiKey);
+      if (storedProvider) setProvider(storedProvider);
 
       // Load App State
       const savedState = localStorage.getItem('genai-editor-state');
@@ -221,8 +299,6 @@ export default function App() {
         const parsed = JSON.parse(savedState);
         if (parsed.prompt) setPrompt(parsed.prompt);
         if (parsed.history && Array.isArray(parsed.history)) setHistory(parsed.history);
-        
-        // Only restore generated image if it wasn't cleared intentionally
         if (parsed.generatedImage) setGeneratedImage(parsed.generatedImage);
       }
     } catch (e) {
@@ -230,47 +306,35 @@ export default function App() {
     }
   }, []);
 
-  // Save state to localStorage helper
+  // Save state helper
   const saveToLocalStorage = (newState: Partial<{ prompt: string, history: GeneratedImage[], generatedImage: GeneratedImage | null }>) => {
     try {
       const currentStateString = localStorage.getItem('genai-editor-state');
       const currentState = currentStateString ? JSON.parse(currentStateString) : {};
-      
       const mergedState = { ...currentState, ...newState };
-      
-      // Simple quota management
       localStorage.setItem('genai-editor-state', JSON.stringify(mergedState));
     } catch (e) {
-      console.warn("Storage quota exceeded or save failed. Clearing heavy image data.");
-      // Fallback: Try saving only text data
       try {
-        localStorage.setItem('genai-editor-state', JSON.stringify({ 
-           prompt: newState.prompt 
-        }));
-      } catch (e2) {
-        console.error("Critical storage failure", e2);
-      }
+        localStorage.setItem('genai-editor-state', JSON.stringify({ prompt: newState.prompt }));
+      } catch (e2) {}
     }
   };
 
-  const handleSaveApiKey = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem('gemini_api_key', key);
+  const handleSaveConfig = (gKey: string, oKey: string, prov: AIProvider) => {
+    setGoogleApiKey(gKey);
+    setOpenaiApiKey(oKey);
+    setProvider(prov);
+    
+    localStorage.setItem('gemini_api_key', gKey);
+    localStorage.setItem('openai_api_key', oKey);
+    localStorage.setItem('ai_provider', prov);
+    
     setShowApiKeyModal(false);
   };
 
-  // Auto-save effects
-  useEffect(() => {
-    saveToLocalStorage({ prompt });
-  }, [prompt]);
-
-  useEffect(() => {
-    saveToLocalStorage({ history });
-  }, [history]);
-
-  useEffect(() => {
-    saveToLocalStorage({ generatedImage });
-  }, [generatedImage]);
+  useEffect(() => { saveToLocalStorage({ prompt }); }, [prompt]);
+  useEffect(() => { saveToLocalStorage({ history }); }, [history]);
+  useEffect(() => { saveToLocalStorage({ generatedImage }); }, [generatedImage]);
 
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,7 +345,6 @@ export default function App() {
       reader.onload = (e) => {
         if (e.target?.result) {
           const result = e.target.result as string;
-          // Extract base64 part
           const base64 = result.split(',')[1];
           setSelectedImage({
             file,
@@ -290,7 +353,7 @@ export default function App() {
             mimeType: file.type,
           });
           setGeneratedImage(null);
-          setHistory([]); // Clear history on new file
+          setHistory([]);
           setEditState({ status: 'idle' });
         }
       };
@@ -310,7 +373,6 @@ export default function App() {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       if (!file.type.startsWith('image/')) return;
-
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
@@ -323,7 +385,7 @@ export default function App() {
             mimeType: file.type,
           });
           setGeneratedImage(null);
-          setHistory([]); // Clear history on new file
+          setHistory([]);
           setEditState({ status: 'idle' });
         }
       };
@@ -334,12 +396,20 @@ export default function App() {
   const handleGenerate = async () => {
     if (!selectedImage || !prompt.trim()) return;
 
-    // Check if we need a key
-    // We check purely for existence here, validation happens in service
-    // If process.env.API_KEY is missing (undefined) AND apiKey state is empty, prompt user.
-    if (!process.env.API_KEY && !apiKey) {
-        setShowApiKeyModal(true);
-        return;
+    // Check credentials based on provider
+    let apiKeyToUse = '';
+    if (provider === 'google') {
+       apiKeyToUse = googleApiKey || (process.env.API_KEY || '');
+       if (!apiKeyToUse) {
+         setShowApiKeyModal(true);
+         return;
+       }
+    } else if (provider === 'openai') {
+       apiKeyToUse = openaiApiKey;
+       if (!apiKeyToUse) {
+         setShowApiKeyModal(true);
+         return;
+       }
     }
 
     setEditState({ status: 'loading' });
@@ -349,7 +419,8 @@ export default function App() {
         selectedImage.base64,
         selectedImage.mimeType,
         prompt,
-        apiKey // Pass the manual key if available
+        apiKeyToUse,
+        provider
       );
       
       const newGeneratedImage: GeneratedImage = {
@@ -358,6 +429,7 @@ export default function App() {
         prompt: prompt,
         timestamp: Date.now(),
         isFavorite: false,
+        label: provider === 'openai' ? 'OpenAI Edit' : 'Gemini Edit'
       };
 
       setGeneratedImage(newGeneratedImage);
@@ -365,7 +437,7 @@ export default function App() {
       setEditState({ status: 'success' });
     } catch (error: any) {
        console.error("Generation error:", error);
-       if (error.message === 'API_KEY_MISSING' || error.message.includes('API_KEY_MISSING')) {
+       if (error.message.includes('API_KEY_MISSING')) {
            setShowApiKeyModal(true);
            setEditState({ status: 'idle' });
        } else if (error.message === 'QUOTA_EXCEEDED') {
@@ -382,7 +454,6 @@ export default function App() {
     }
   };
 
-  // Auto-scroll to result on mobile when success
   useEffect(() => {
     if (editState.status === 'success' && resultRef.current) {
       if (window.innerWidth < 1024) {
@@ -400,7 +471,6 @@ export default function App() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    // Clear state from local storage too if needed, or just let auto-save handle it
     saveToLocalStorage({ generatedImage: null, history: [] });
   };
 
@@ -452,7 +522,6 @@ export default function App() {
     setEditingLabelId(null);
   };
 
-  // History Navigation Logic
   const currentIndex = generatedImage ? history.findIndex(img => img.id === generatedImage.id) : -1;
   const canUndo = currentIndex !== -1 && currentIndex < history.length - 1;
   const canRedo = currentIndex !== -1 && currentIndex > 0;
@@ -484,15 +553,16 @@ export default function App() {
   return (
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans">
       
-      {/* API Key Modal */}
       <ApiKeyModal 
         isOpen={showApiKeyModal} 
         onClose={() => setShowApiKeyModal(false)}
-        onSave={handleSaveApiKey}
-        initialKey={apiKey}
+        onSave={handleSaveConfig}
+        initialGoogleKey={googleApiKey}
+        initialOpenAIKey={openaiApiKey}
+        initialProvider={provider}
       />
 
-      {/* Navbar / Header */}
+      {/* Navbar */}
       <div className="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -501,30 +571,33 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white leading-none">GenAI Editor</h1>
-              <p className="text-slate-400 text-xs md:text-sm font-medium">Powered by Gemini 2.5</p>
+              <p className="text-slate-400 text-xs md:text-sm font-medium">
+                  Powered by {provider === 'google' ? 'Gemini 2.5' : 'OpenAI DALL·E'}
+              </p>
             </div>
           </div>
           
-          {/* Settings / API Key Button */}
           <button 
              onClick={() => setShowApiKeyModal(true)}
-             className={`p-2 rounded-lg transition-colors border ${apiKey ? 'text-banana-400 border-banana-500/30 bg-banana-500/10' : 'text-slate-400 border-slate-700 hover:text-white'}`}
-             title="Configure API Key"
+             className={`p-2 rounded-lg transition-colors border flex items-center gap-2 ${
+                 (provider === 'google' && googleApiKey) || (provider === 'openai' && openaiApiKey)
+                 ? 'text-banana-400 border-banana-500/30 bg-banana-500/10' 
+                 : 'text-slate-400 border-slate-700 hover:text-white'
+             }`}
+             title="Configure AI Provider"
           >
              <KeyIcon />
+             <span className="text-xs font-semibold hidden md:inline uppercase">{provider}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Content with Top Padding to account for fixed header */}
+      {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 pt-28 pb-8">
-        {/* Two Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           
-          {/* LEFT COLUMN: Input Section */}
+          {/* Input Section */}
           <div className="flex flex-col gap-6 w-full">
-            
-            {/* Upload Area Container */}
             <div className="w-full bg-slate-800 rounded-2xl p-1 border border-slate-700/50 shadow-sm flex-shrink-0 relative z-0">
               {!selectedImage ? (
                 <div 
@@ -533,13 +606,7 @@ export default function App() {
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
                 >
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileSelect} 
-                    accept="image/*" 
-                    className="hidden" 
-                  />
+                  <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
                   <div className="flex flex-col items-center text-center max-w-sm z-10">
                     <div className="w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center mb-6 border border-slate-600 group-hover:scale-110 transition-transform duration-300 group-hover:border-banana-400/30 group-hover:bg-slate-700">
                       <UploadIcon />
@@ -556,89 +623,52 @@ export default function App() {
               ) : (
                 <div className="w-full relative min-h-[300px] md:min-h-[400px] rounded-xl overflow-hidden bg-black/40 border border-slate-700 flex items-center justify-center group">
                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
-                  <img 
-                    src={selectedImage.previewUrl} 
-                    alt="Original" 
-                    className="max-h-[500px] w-auto max-w-full object-contain shadow-2xl"
-                  />
-                  <button 
-                    onClick={handleClear}
-                    className="absolute top-4 right-4 p-2 bg-slate-900/80 hover:bg-red-500 text-white rounded-lg backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10"
-                    title="Remove image"
-                  >
+                  <img src={selectedImage.previewUrl} alt="Original" className="max-h-[500px] w-auto max-w-full object-contain shadow-2xl" />
+                  <button onClick={handleClear} className="absolute top-4 right-4 p-2 bg-slate-900/80 hover:bg-red-500 text-white rounded-lg backdrop-blur-md transition-all opacity-0 group-hover:opacity-100 shadow-lg border border-white/10" title="Remove image">
                     <TrashIcon />
                   </button>
-                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide text-white/90 border border-white/10">
-                    ORIGINAL
-                  </div>
+                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide text-white/90 border border-white/10">ORIGINAL</div>
                 </div>
               )}
             </div>
 
-            {/* Prompt Input Section */}
+            {/* Prompt Section */}
             <div className="bg-slate-800 rounded-2xl border border-slate-700/50 shadow-xl overflow-hidden">
               <div className="p-4 md:p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <label htmlFor="prompt" className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                     <MagicIcon /> Describe your edit
                   </label>
-                  {prompt && (
-                    <button onClick={() => setPrompt('')} className="text-xs text-slate-500 hover:text-slate-300">
-                      Clear
-                    </button>
-                  )}
+                  {prompt && <button onClick={() => setPrompt('')} className="text-xs text-slate-500 hover:text-slate-300">Clear</button>}
                 </div>
-                
                 <textarea
                   id="prompt"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="e.g., Change the background to a snowy mountain, add a neon glow effect..."
+                  placeholder="e.g., Change the background to a snowy mountain..."
                   className="w-full h-32 bg-slate-900 border border-slate-700 rounded-xl p-4 text-slate-100 placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500/50 focus:border-banana-500 transition-all resize-none text-base md:text-lg leading-relaxed"
                   disabled={editState.status === 'loading'}
                 />
-                
-                {/* Suggestions */}
                 <div className="space-y-2">
                   <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Try these ideas</p>
                   <div className="flex flex-wrap gap-2">
                     {suggestedPrompts.map((p, i) => (
-                      <button 
-                        key={i}
-                        onClick={() => setPrompt(p.text)}
-                        className="text-xs sm:text-sm bg-slate-700/40 hover:bg-slate-700 hover:text-white text-slate-400 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-slate-600"
-                        title={p.text}
-                      >
-                        {p.label}
-                      </button>
+                      <button key={i} onClick={() => setPrompt(p.text)} className="text-xs sm:text-sm bg-slate-700/40 hover:bg-slate-700 hover:text-white text-slate-400 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-slate-600" title={p.text}>{p.label}</button>
                     ))}
                   </div>
                 </div>
-
                 <div className="pt-2">
-                  <Button 
-                    onClick={handleGenerate}
-                    className="w-full py-4 text-lg shadow-lg shadow-banana-500/10"
-                    disabled={!selectedImage || !prompt.trim()}
-                    isLoading={editState.status === 'loading'}
-                  >
+                  <Button onClick={handleGenerate} className="w-full py-4 text-lg shadow-lg shadow-banana-500/10" disabled={!selectedImage || !prompt.trim()} isLoading={editState.status === 'loading'}>
                     <span className="flex items-center gap-2">
-                      Generate
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                      </svg>
+                      Generate with {provider === 'google' ? 'Gemini' : 'OpenAI'}
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                     </span>
                   </Button>
-                  
                   {editState.status === 'error' && (
                     <div className="mt-4 p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2 bg-red-900/20 border-red-500/20">
-                      <div className="text-red-400 mt-0.5">
-                        {editState.errorMessage?.includes('Rate limit') ? <ClockIcon /> : <XMarkIcon />}
-                      </div>
+                      <div className="text-red-400 mt-0.5">{editState.errorMessage?.includes('Rate limit') ? <ClockIcon /> : <XMarkIcon />}</div>
                       <div>
-                         <p className="text-red-200 font-medium text-sm">
-                           {editState.errorMessage?.includes('Rate limit') ? 'Rate Limit Reached' : 'Generation Failed'}
-                         </p>
+                         <p className="text-red-200 font-medium text-sm">{editState.errorMessage?.includes('Rate limit') ? 'Rate Limit Reached' : 'Generation Failed'}</p>
                          <p className="text-red-300/70 text-sm mt-1">{editState.errorMessage}</p>
                       </div>
                     </div>
@@ -648,75 +678,33 @@ export default function App() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Results Section */}
+          {/* Results Section */}
           <div className="flex flex-col gap-6 w-full sticky top-24" ref={resultRef}>
-            
             <div className="bg-slate-800 rounded-2xl border border-slate-700/50 shadow-xl overflow-hidden flex flex-col h-full min-h-[500px]">
-               {/* Result Header */}
                <div className="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/50">
-                 <h2 className="text-base md:text-lg font-semibold text-slate-200 flex items-center gap-2">
-                   <PhotoIcon /> Generated Result
-                 </h2>
+                 <h2 className="text-base md:text-lg font-semibold text-slate-200 flex items-center gap-2"><PhotoIcon /> Generated Result</h2>
                  <div className="flex items-center gap-3">
                    {generatedImage && (
-                     <button 
-                       onClick={downloadImage}
-                       className="flex items-center gap-2 px-3 py-1.5 bg-banana-400 hover:bg-banana-500 text-slate-900 rounded-lg text-xs md:text-sm font-semibold transition-all shadow-lg shadow-banana-500/20"
-                       title="Download Image"
-                     >
-                       <DownloadIcon />
-                       <span className="hidden sm:inline">Download</span>
+                     <button onClick={downloadImage} className="flex items-center gap-2 px-3 py-1.5 bg-banana-400 hover:bg-banana-500 text-slate-900 rounded-lg text-xs md:text-sm font-semibold transition-all shadow-lg shadow-banana-500/20" title="Download Image">
+                       <DownloadIcon /><span className="hidden sm:inline">Download</span>
                      </button>
                    )}
                    <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1 border border-slate-700/50">
-                      <button 
-                         onClick={handleUndo} 
-                         disabled={!canUndo} 
-                         className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
-                         title="Undo (Ctrl+Z)"
-                       >
-                         <UndoIcon />
-                       </button>
+                      <button onClick={handleUndo} disabled={!canUndo} className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors" title="Undo (Ctrl+Z)"><UndoIcon /></button>
                        <div className="w-px h-4 bg-slate-700"></div>
-                       <button 
-                         onClick={handleRedo} 
-                         disabled={!canRedo}
-                         className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
-                         title="Redo (Ctrl+Y)"
-                       >
-                         <RedoIcon />
-                       </button>
+                       <button onClick={handleRedo} disabled={!canRedo} className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors" title="Redo (Ctrl+Y)"><RedoIcon /></button>
                    </div>
                  </div>
                </div>
-               
-               {/* Result Canvas */}
                <div className="flex-1 bg-slate-900 relative flex items-center justify-center overflow-hidden group p-4">
-                   {/* Background Grid Pattern */}
-                   <div className="absolute inset-0 opacity-20 pointer-events-none" 
-                        style={{ backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
-                   </div>
-
+                   <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                   {generatedImage ? (
                     <div className="relative w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-300">
-                      <img 
-                        src={generatedImage.imageUrl} 
-                        alt="Generated Result" 
-                        className="max-w-full max-h-[600px] object-contain shadow-2xl rounded-lg"
-                      />
-                      
-                      {/* Floating Action Bar */}
+                      <img src={generatedImage.imageUrl} alt="Generated Result" className="max-w-full max-h-[600px] object-contain shadow-2xl rounded-lg" />
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-full shadow-2xl translate-y-20 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10">
-                        <Button variant="ghost" onClick={downloadImage} className="text-slate-300 hover:text-white py-2 px-4 h-auto rounded-full hover:bg-white/10">
-                          <DownloadIcon />
-                        </Button>
+                        <Button variant="ghost" onClick={downloadImage} className="text-slate-300 hover:text-white py-2 px-4 h-auto rounded-full hover:bg-white/10"><DownloadIcon /></Button>
                         <div className="w-px h-4 bg-slate-700"></div>
-                        <button 
-                           onClick={(e) => generatedImage && toggleFavorite(e, generatedImage.id)} 
-                           className={`p-2 rounded-full hover:bg-white/10 transition-colors ${generatedImage.isFavorite ? 'text-red-500' : 'text-slate-300'}`}
-                        >
-                           <HeartIcon solid={generatedImage.isFavorite} />
-                        </button>
+                        <button onClick={(e) => generatedImage && toggleFavorite(e, generatedImage.id)} className={`p-2 rounded-full hover:bg-white/10 transition-colors ${generatedImage.isFavorite ? 'text-red-500' : 'text-slate-300'}`}><HeartIcon solid={generatedImage.isFavorite} /></button>
                       </div>
                     </div>
                   ) : (
@@ -728,21 +716,13 @@ export default function App() {
                             <div className="absolute inset-2 border-t-4 border-banana-200 border-l-4 border-transparent rounded-full animate-spin direction-reverse opacity-70"></div>
                           </div>
                           <h3 className="text-xl font-medium text-white mb-2">Creating Magic</h3>
-                          <p className="text-slate-400 text-sm">
-                            Gemini is reimagining your pixels...
-                          </p>
+                          <p className="text-slate-400 text-sm">Gemini is reimagining your pixels...</p>
                         </div>
                       ) : (
                         <div className="opacity-50 flex flex-col items-center">
-                          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 transform rotate-3">
-                             <MagicIcon />
-                          </div>
-                          <p className="text-slate-400 text-lg">
-                            Ready to create
-                          </p>
-                          <p className="text-slate-600 text-sm mt-1">
-                            Results will appear here
-                          </p>
+                          <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center mb-6 transform rotate-3"><MagicIcon /></div>
+                          <p className="text-slate-400 text-lg">Ready to create</p>
+                          <p className="text-slate-600 text-sm mt-1">Results will appear here</p>
                         </div>
                       )}
                     </div>
@@ -750,92 +730,41 @@ export default function App() {
                </div>
             </div>
 
-            {/* History Panel */}
+            {/* History */}
             {history.length > 0 && (
               <div className="bg-slate-800 rounded-2xl border border-slate-700/50 shadow-lg overflow-hidden flex flex-col max-h-[400px]">
                 <div className="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/80">
                   <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                    <HistoryIcon /> Recent Edits
-                    <span className="bg-slate-900 text-slate-500 text-xs px-2 py-1 rounded-full ml-1">{history.length}</span>
+                    <HistoryIcon /> Recent Edits <span className="bg-slate-900 text-slate-500 text-xs px-2 py-1 rounded-full ml-1">{history.length}</span>
                   </h3>
-                  <button 
-                    onClick={handleClearHistory}
-                    className="text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors"
-                  >
-                    Clear All
-                  </button>
+                  <button onClick={handleClearHistory} className="text-xs text-slate-500 hover:text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors">Clear All</button>
                 </div>
-                
                 <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {history.map((item, index) => (
-                    <div 
-                      key={item.id}
-                      onClick={() => handleHistoryRestore(item)}
-                      className={`group flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer border ${
-                        generatedImage?.id === item.id 
-                          ? 'bg-slate-700/60 border-banana-500/40 shadow-inner' 
-                          : 'bg-transparent border-transparent hover:bg-slate-700/40 hover:border-slate-700'
-                      }`}
-                    >
-                      {/* Thumbnail */}
+                    <div key={item.id} onClick={() => handleHistoryRestore(item)} className={`group flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer border ${generatedImage?.id === item.id ? 'bg-slate-700/60 border-banana-500/40 shadow-inner' : 'bg-transparent border-transparent hover:bg-slate-700/40 hover:border-slate-700'}`}>
                       <div className="w-14 h-14 rounded-lg overflow-hidden bg-slate-900 shrink-0 border border-slate-600/50 shadow-sm relative group-hover:scale-105 transition-transform">
-                        <img 
-                          src={item.imageUrl} 
-                          alt="Thumbnail" 
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={item.imageUrl} alt="Thumbnail" className="w-full h-full object-cover" />
                       </div>
-
-                      {/* Content */}
                       <div className="flex-1 min-w-0 flex flex-col gap-1">
                          <div className="flex items-center justify-between gap-2 h-6">
                             {editingLabelId === item.id ? (
                                <div className="flex items-center gap-1 flex-1 bg-slate-900 rounded p-0.5 border border-banana-500/50" onClick={e => e.stopPropagation()}>
-                                  <input 
-                                    type="text" 
-                                    value={tempLabel}
-                                    onChange={(e) => setTempLabel(e.target.value)}
-                                    className="bg-transparent border-none px-2 py-0 text-xs text-white w-full focus:ring-0 placeholder:text-slate-600"
-                                    placeholder="Label..."
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if(e.key === 'Enter') saveLabel(e as any, item.id);
-                                      if(e.key === 'Escape') cancelEditingLabel(e as any);
-                                    }}
-                                  />
-                                  <button onClick={(e) => saveLabel(e, item.id)} className="p-1 hover:bg-slate-800 rounded text-green-400">
-                                    <CheckIcon />
-                                  </button>
+                                  <input type="text" value={tempLabel} onChange={(e) => setTempLabel(e.target.value)} className="bg-transparent border-none px-2 py-0 text-xs text-white w-full focus:ring-0 placeholder:text-slate-600" placeholder="Label..." autoFocus onKeyDown={(e) => {if(e.key === 'Enter') saveLabel(e as any, item.id); if(e.key === 'Escape') cancelEditingLabel(e as any);}} />
+                                  <button onClick={(e) => saveLabel(e, item.id)} className="p-1 hover:bg-slate-800 rounded text-green-400"><CheckIcon /></button>
                                </div>
                             ) : (
                                <>
                                  <div className="flex items-center gap-2 group/label max-w-[80%]">
-                                    <span className={`text-sm font-medium truncate ${item.label ? 'text-banana-200' : 'text-slate-300'}`}>
-                                      {item.label || `Version ${history.length - index}`}
-                                    </span>
-                                    <button 
-                                      onClick={(e) => startEditingLabel(e, item)}
-                                      className="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                      title="Rename"
-                                    >
-                                      <PencilIcon />
-                                    </button>
+                                    <span className={`text-sm font-medium truncate ${item.label ? 'text-banana-200' : 'text-slate-300'}`}>{item.label || `Version ${history.length - index}`}</span>
+                                    <button onClick={(e) => startEditingLabel(e, item)} className="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" title="Rename"><PencilIcon /></button>
                                  </div>
                                  <div className="flex items-center">
-                                    <button 
-                                        onClick={(e) => toggleFavorite(e, item.id)}
-                                        className={`p-1 rounded-full hover:bg-slate-600/50 transition-colors opacity-0 group-hover:opacity-100 ${item.isFavorite ? 'opacity-100' : ''}`}
-                                    >
-                                        <HeartIcon solid={item.isFavorite} />
-                                    </button>
+                                    <button onClick={(e) => toggleFavorite(e, item.id)} className={`p-1 rounded-full hover:bg-slate-600/50 transition-colors opacity-0 group-hover:opacity-100 ${item.isFavorite ? 'opacity-100' : ''}`}><HeartIcon solid={item.isFavorite} /></button>
                                  </div>
                                </>
                             )}
                          </div>
-                        
-                        <p className="text-xs text-slate-500 line-clamp-1 truncate w-full pr-4">
-                          {item.prompt}
-                        </p>
+                        <p className="text-xs text-slate-500 line-clamp-1 truncate w-full pr-4">{item.prompt}</p>
                       </div>
                     </div>
                   ))}
@@ -843,14 +772,9 @@ export default function App() {
               </div>
             )}
           </div>
-
         </div>
       </main>
-      
-      {/* Simple Footer */}
-      <footer className="w-full border-t border-slate-800 mt-auto bg-slate-900/50 py-6 text-center text-slate-500 text-xs">
-         <p>GenAI Image Editor • Powered by Google Gemini</p>
-      </footer>
+      <footer className="w-full border-t border-slate-800 mt-auto bg-slate-900/50 py-6 text-center text-slate-500 text-xs"><p>GenAI Image Editor • Powered by Google Gemini & OpenAI</p></footer>
     </div>
   );
 }

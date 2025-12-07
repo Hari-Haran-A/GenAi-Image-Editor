@@ -18,3 +18,5 @@ export interface GeneratedImage {
   label?: string;
   isFavorite?: boolean;
 }
+
+export type AIProvider = 'google' | 'openai';
