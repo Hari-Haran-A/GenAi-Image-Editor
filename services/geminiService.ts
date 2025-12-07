@@ -66,6 +66,19 @@ export const generateEditedImage = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+
+    // Check for rate limiting / quota exhaustion (HTTP 429)
+    // The error object structure can vary, so we check multiple properties
+    if (
+      error.status === 429 || 
+      error.code === 429 || 
+      error.message?.includes('429') || 
+      error.message?.includes('quota') ||
+      error.message?.includes('RESOURCE_EXHAUSTED')
+    ) {
+       throw new Error("QUOTA_EXCEEDED");
+    }
+
     if (error.message.includes("API_KEY_MISSING")) {
         throw new Error("API_KEY_MISSING");
     }

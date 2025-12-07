@@ -76,6 +76,12 @@ const XMarkIcon = () => (
   </svg>
 );
 
+const ClockIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-yellow-500">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+
 const KeyIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
@@ -362,6 +368,11 @@ export default function App() {
        if (error.message === 'API_KEY_MISSING' || error.message.includes('API_KEY_MISSING')) {
            setShowApiKeyModal(true);
            setEditState({ status: 'idle' });
+       } else if (error.message === 'QUOTA_EXCEEDED') {
+           setEditState({ 
+              status: 'error', 
+              errorMessage: 'Rate limit reached. Please wait a moment before trying again.' 
+            });
        } else {
            setEditState({ 
               status: 'error', 
@@ -620,10 +631,14 @@ export default function App() {
                   </Button>
                   
                   {editState.status === 'error' && (
-                    <div className="mt-4 p-4 bg-red-900/20 rounded-xl border border-red-500/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                      <div className="text-red-400 mt-0.5"><XMarkIcon /></div>
+                    <div className="mt-4 p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2 bg-red-900/20 border-red-500/20">
+                      <div className="text-red-400 mt-0.5">
+                        {editState.errorMessage?.includes('Rate limit') ? <ClockIcon /> : <XMarkIcon />}
+                      </div>
                       <div>
-                         <p className="text-red-200 font-medium text-sm">Generation Failed</p>
+                         <p className="text-red-200 font-medium text-sm">
+                           {editState.errorMessage?.includes('Rate limit') ? 'Rate Limit Reached' : 'Generation Failed'}
+                         </p>
                          <p className="text-red-300/70 text-sm mt-1">{editState.errorMessage}</p>
                       </div>
                     </div>
