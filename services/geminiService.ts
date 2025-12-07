@@ -5,7 +5,6 @@ import { AIProvider } from "../types";
 const GEMINI_MODEL_NAME = 'gemini-2.5-flash-image';
 
 // Helper to resize/crop for OpenAI (OpenAI requires square PNGs < 4MB)
-// This is a basic implementation to ensure the API call doesn't immediately fail on non-square images
 const prepareImageForOpenAI = async (base64: string, mimeType: string): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -61,9 +60,12 @@ export const generateEditedImage = async (
   provider: AIProvider = 'google'
 ): Promise<string> => {
   
+  // SANITIZE KEY: Remove all whitespace/newlines which cause "Failed to fetch" in headers
+  const cleanKey = apiKey ? apiKey.trim() : '';
+
   // 1. Google Gemini Logic
   if (provider === 'google') {
-    const key = apiKey || process.env.API_KEY;
+    const key = cleanKey || process.env.API_KEY;
     if (!key) throw new Error("API_KEY_MISSING");
 
     try {
@@ -103,26 +105,23 @@ export const generateEditedImage = async (
       }
     } catch (error: any) {
       console.error("Gemini API Error:", error);
-      if (error.status === 429 || error.message?.includes('429')) throw new Error("QUOTA_EXCEEDED");
-      if (error.message.includes("API_KEY")) throw new Error("API_KEY_MISSING");
+      
+      // Standardize errors
+      const msg = error.message || error.toString();
+      if (error.status === 429 || msg.includes('429')) throw new Error("QUOTA_EXCEEDED");
+      if (msg.includes("API_KEY") || error.status === 400) throw new Error("INVALID_API_KEY");
+      if (msg.includes("Failed to fetch")) throw new Error("NETWORK_ERROR");
+      
       throw error;
     }
   }
 
   // 2. OpenAI Logic
   if (provider === 'openai') {
-    if (!apiKey) throw new Error("API_KEY_MISSING");
+    if (!cleanKey) throw new Error("API_KEY_MISSING");
     
     try {
-        // OpenAI Edits Endpoint requires multipart/form-data
-        // It requires: image (square PNG < 4MB), mask (optional, but needed for 'edit'), prompt
-        
         const imageBlob = await prepareImageForOpenAI(base64Image, mimeType);
-        // Create a mask to allow editing the whole image or specific parts. 
-        // For this generic "editor", we'll provide a transparent mask so the model CAN regenerate pixels.
-        // *However*, DALL-E 2 edits often expect a mask where transparent = keep, colored = replace? 
-        // Actually: Transparent areas of the mask indicate where the image should be edited.
-        // So a fully transparent mask = edit everything based on prompt.
         const maskBlob = await createTransparentMask(1024); 
 
         const formData = new FormData();
@@ -135,24 +134,33 @@ export const generateEditedImage = async (
         const response = await fetch('https://api.openai.com/v1/images/edits', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`
-                // Content-Type is set automatically by FormData
+                'Authorization': `Bearer ${cleanKey}` // Clean key is crucial here
             },
             body: formData
         });
 
-        const data = await response.json();
+        // Safe JSON parsing
+        let data;
+        const text = await response.text();
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error("OpenAI Non-JSON Response:", text);
+            throw new Error(`OpenAI API returned non-JSON error: ${response.status} ${response.statusText}`);
+        }
 
         if (!response.ok) {
-            throw new Error(data.error?.message || "OpenAI API failed");
+            const errorMsg = data.error?.message || "OpenAI API failed";
+            if (errorMsg.includes("billing") || errorMsg.includes("quota")) {
+                throw new Error("BILLING_LIMIT_REACHED");
+            }
+            if (errorMsg.includes("invalid api key")) {
+                throw new Error("INVALID_API_KEY");
+            }
+            throw new Error(errorMsg);
         }
 
         if (data.data && data.data.length > 0) {
-            // OpenAI returns a URL usually, or b64_json if requested. 
-            // Default is url. We'll use the URL.
-            // Note: URL might expire, better to fetch it and convert to base64 if we want persistence, 
-            // but for now let's just use the URL proxy or fetch it.
-            // To be safe with CORS and expiration, let's try to fetch the blob and convert to data URI.
             const imgUrl = data.data[0].url;
             try {
                const imgRes = await fetch(imgUrl);
@@ -163,14 +171,15 @@ export const generateEditedImage = async (
                   reader.readAsDataURL(imgBlob);
                });
             } catch (e) {
-               return imgUrl; // Fallback
+               return imgUrl; 
             }
         }
         throw new Error("No image data received from OpenAI");
 
     } catch (error: any) {
         console.error("OpenAI Error:", error);
-        throw new Error(error.message || "OpenAI Generation Failed");
+        if (error.message.includes("Failed to fetch")) throw new Error("NETWORK_ERROR");
+        throw error;
     }
   }
 

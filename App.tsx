@@ -82,6 +82,12 @@ const ClockIcon = () => (
     </svg>
   );
 
+const AlertIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-amber-500">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+);
+
 const KeyIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
@@ -437,20 +443,35 @@ export default function App() {
       setEditState({ status: 'success' });
     } catch (error: any) {
        console.error("Generation error:", error);
-       if (error.message.includes('API_KEY_MISSING')) {
+       let errorMessage = error.message || 'An unknown error occurred';
+       
+       if (errorMessage === 'API_KEY_MISSING') {
            setShowApiKeyModal(true);
            setEditState({ status: 'idle' });
-       } else if (error.message === 'QUOTA_EXCEEDED') {
-           setEditState({ 
-              status: 'error', 
-              errorMessage: 'Rate limit reached. Please wait a moment before trying again.' 
-            });
-       } else {
-           setEditState({ 
-              status: 'error', 
-              errorMessage: error.message || 'An unknown error occurred' 
-            });
+           return;
        }
+       
+       if (errorMessage === 'INVALID_API_KEY') {
+           setShowApiKeyModal(true);
+           errorMessage = 'Invalid API Key provided. Please check your key.';
+       }
+
+       if (errorMessage === 'QUOTA_EXCEEDED') {
+           errorMessage = 'Rate limit reached. Please wait a moment before trying again.';
+       }
+       
+       if (errorMessage === 'BILLING_LIMIT_REACHED') {
+           errorMessage = 'Billing limit reached. Please check your OpenAI account credits.';
+       }
+       
+       if (errorMessage === 'NETWORK_ERROR') {
+           errorMessage = 'Connection failed. Please check your internet or disable ad-blockers.';
+       }
+
+       setEditState({ 
+          status: 'error', 
+          errorMessage 
+        });
     }
   };
 
@@ -665,11 +686,15 @@ export default function App() {
                     </span>
                   </Button>
                   {editState.status === 'error' && (
-                    <div className="mt-4 p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2 bg-red-900/20 border-red-500/20">
-                      <div className="text-red-400 mt-0.5">{editState.errorMessage?.includes('Rate limit') ? <ClockIcon /> : <XMarkIcon />}</div>
+                    <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-2 ${editState.errorMessage?.includes('Billing') ? 'bg-amber-900/20 border-amber-500/20' : 'bg-red-900/20 border-red-500/20'}`}>
+                      <div className={`mt-0.5 ${editState.errorMessage?.includes('Billing') ? 'text-amber-500' : 'text-red-400'}`}>
+                         {editState.errorMessage?.includes('Billing') || editState.errorMessage?.includes('Rate') ? <AlertIcon /> : <XMarkIcon />}
+                      </div>
                       <div>
-                         <p className="text-red-200 font-medium text-sm">{editState.errorMessage?.includes('Rate limit') ? 'Rate Limit Reached' : 'Generation Failed'}</p>
-                         <p className="text-red-300/70 text-sm mt-1">{editState.errorMessage}</p>
+                         <p className={`font-medium text-sm ${editState.errorMessage?.includes('Billing') ? 'text-amber-200' : 'text-red-200'}`}>
+                            {editState.errorMessage?.includes('Billing') ? 'Account Quota Issue' : (editState.errorMessage?.includes('Rate') ? 'Rate Limit Reached' : 'Generation Failed')}
+                         </p>
+                         <p className={`${editState.errorMessage?.includes('Billing') ? 'text-amber-300/70' : 'text-red-300/70'} text-sm mt-1`}>{editState.errorMessage}</p>
                       </div>
                     </div>
                   )}
