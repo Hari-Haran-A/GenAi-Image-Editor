@@ -148,6 +148,17 @@ const ApiKeyModal = ({
           <p className="text-sm text-slate-400">
             To generate images with Gemini 2.5, you need to provide a valid API key.
           </p>
+
+          <a 
+            href="https://ai.google.dev/gemini-api/docs/setup" 
+            target="_blank" 
+            rel="noreferrer" 
+            className="flex items-center justify-center gap-2 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-xl transition-all border border-slate-600 group"
+          >
+            <BookIcon />
+            <span>Read API Key Setup Guide</span>
+            <span className="group-hover:translate-x-0.5 transition-transform">&rarr;</span>
+          </a>
           
           <div className="w-full text-left space-y-4 mt-2">
             
@@ -173,9 +184,6 @@ const ApiKeyModal = ({
                </div>
                <div className="flex justify-between items-center text-xs mt-2">
                   <span className="text-slate-500">Stored locally in browser.</span>
-                  <a href="https://ai.google.dev/gemini-api/docs/setup" target="_blank" rel="noreferrer" className="flex items-center gap-1 text-banana-400 hover:underline">
-                    <BookIcon /> API Key Setup Guide &rarr;
-                  </a>
                </div>
              </div>
 
@@ -192,9 +200,6 @@ const ApiKeyModal = ({
                  </div>
                  <div className="text-xs text-slate-500 flex flex-col gap-1">
                    <span>Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.</span>
-                   <a href="https://ai.google.dev/gemini-api/docs/setup" target="_blank" rel="noreferrer" className="text-slate-400 hover:text-white underline">
-                     Need help? View Setup Guide
-                   </a>
                  </div>
               </div>
             ) : (
@@ -671,24 +676,36 @@ export default function App() {
                  <h2 className="text-base md:text-lg font-semibold text-slate-200 flex items-center gap-2">
                    <PhotoIcon /> Generated Result
                  </h2>
-                 <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1 border border-slate-700/50">
-                    <button 
-                       onClick={handleUndo} 
-                       disabled={!canUndo} 
-                       className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
-                       title="Undo (Ctrl+Z)"
-                     >
-                       <UndoIcon />
-                     </button>
-                     <div className="w-px h-4 bg-slate-700"></div>
+                 <div className="flex items-center gap-3">
+                   {generatedImage && (
                      <button 
-                       onClick={handleRedo} 
-                       disabled={!canRedo}
-                       className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
-                       title="Redo (Ctrl+Y)"
+                       onClick={downloadImage}
+                       className="flex items-center gap-2 px-3 py-1.5 bg-banana-400 hover:bg-banana-500 text-slate-900 rounded-lg text-xs md:text-sm font-semibold transition-all shadow-lg shadow-banana-500/20"
+                       title="Download Image"
                      >
-                       <RedoIcon />
+                       <DownloadIcon />
+                       <span className="hidden sm:inline">Download</span>
                      </button>
+                   )}
+                   <div className="flex items-center gap-1 bg-slate-900 rounded-lg p-1 border border-slate-700/50">
+                      <button 
+                         onClick={handleUndo} 
+                         disabled={!canUndo} 
+                         className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
+                         title="Undo (Ctrl+Z)"
+                       >
+                         <UndoIcon />
+                       </button>
+                       <div className="w-px h-4 bg-slate-700"></div>
+                       <button 
+                         onClick={handleRedo} 
+                         disabled={!canRedo}
+                         className="p-2 rounded hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 transition-colors"
+                         title="Redo (Ctrl+Y)"
+                       >
+                         <RedoIcon />
+                       </button>
+                   </div>
                  </div>
                </div>
                
