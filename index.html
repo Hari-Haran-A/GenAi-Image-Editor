@@ -66,8 +66,15 @@
 </script>
 </head>
   <body>
-    <div id="root" class="h-screen w-full flex items-center justify-center text-slate-500">
-      Loading GenAI Image Editor...
+    <!-- 
+      The #root element must be clean of layout classes like h-screen/flex/items-center 
+      because they will persist after React mounts, causing the app to be vertically centered 
+      and potentially cutting off the top content.
+    -->
+    <div id="root">
+      <div class="h-screen w-full flex items-center justify-center text-slate-500">
+        Loading GenAI Image Editor...
+      </div>
     </div>
     <script type="module" src="index.tsx"></script>
   </body>

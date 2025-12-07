@@ -275,7 +275,7 @@ export default function App() {
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col font-sans">
       
       {/* Navbar / Header */}
-      <div className="w-full border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+      <div className="w-full border-b border-slate-800 bg-slate-900/90 backdrop-blur-md fixed top-0 left-0 right-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-banana-400 to-banana-600 rounded-xl flex items-center justify-center text-slate-900 shadow-lg shadow-banana-500/20 shrink-0 transform hover:scale-105 transition-transform duration-200">
@@ -290,7 +290,8 @@ export default function App() {
         </div>
       </div>
 
-      <main className="flex-grow container mx-auto px-4 py-8">
+      {/* Main Content with Top Padding to account for fixed header */}
+      <main className="flex-grow container mx-auto px-4 pt-28 pb-8">
         {/* Two Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           
@@ -298,10 +299,10 @@ export default function App() {
           <div className="flex flex-col gap-6 w-full">
             
             {/* Upload Area Container */}
-            <div className="w-full bg-slate-800/30 rounded-2xl p-1 border border-slate-700/50 shadow-sm">
+            <div className="w-full bg-slate-800 rounded-2xl p-1 border border-slate-700/50 shadow-sm flex-shrink-0 relative z-0">
               {!selectedImage ? (
                 <div 
-                  className="w-full min-h-[300px] md:min-h-[400px] border-2 border-dashed border-slate-600 hover:border-banana-400/50 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-all duration-300 flex flex-col items-center justify-center p-6 cursor-pointer relative group"
+                  className="w-full min-h-[300px] md:min-h-[400px] border-2 border-dashed border-slate-600 hover:border-banana-400/50 rounded-xl bg-slate-800 hover:bg-slate-750 transition-all duration-300 flex flex-col items-center justify-center p-6 cursor-pointer relative group"
                   onClick={() => fileInputRef.current?.click()}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
@@ -314,7 +315,7 @@ export default function App() {
                     className="hidden" 
                   />
                   <div className="flex flex-col items-center text-center max-w-sm z-10">
-                    <div className="w-20 h-20 rounded-full bg-slate-700/50 flex items-center justify-center mb-6 border border-slate-600 group-hover:scale-110 transition-transform duration-300 group-hover:border-banana-400/30 group-hover:bg-slate-700">
+                    <div className="w-20 h-20 rounded-full bg-slate-700 flex items-center justify-center mb-6 border border-slate-600 group-hover:scale-110 transition-transform duration-300 group-hover:border-banana-400/30 group-hover:bg-slate-700">
                       <UploadIcon />
                     </div>
                     <h3 className="font-semibold text-xl text-slate-200 mb-2">Upload Image</h3>
