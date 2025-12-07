@@ -277,6 +277,8 @@ export default function App() {
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [editState, setEditState] = useState<EditState>({ status: 'idle' });
+  const [statusMessage, setStatusMessage] = useState<string>(''); // For detailed progress updates
+
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabel, setTempLabel] = useState<string>('');
 
@@ -363,6 +365,7 @@ export default function App() {
           setGeneratedImage(null);
           setHistory([]);
           setEditState({ status: 'idle' });
+          setStatusMessage('');
         }
       };
 
@@ -395,6 +398,7 @@ export default function App() {
           setGeneratedImage(null);
           setHistory([]);
           setEditState({ status: 'idle' });
+          setStatusMessage('');
         }
       };
       reader.readAsDataURL(file);
@@ -407,9 +411,8 @@ export default function App() {
       if (!googleApiKey && !process.env.API_KEY) {
           setShowApiKeyModal(true);
       } else {
-          // If we have a key (or environment key), retry generation immediately would be nice, 
-          // but for now just clear error so user can click generate again.
           setEditState({ status: 'idle' });
+          setStatusMessage('');
       }
   };
 
@@ -433,6 +436,7 @@ export default function App() {
     }
 
     setEditState({ status: 'loading' });
+    setStatusMessage('Sending request to AI model...');
 
     try {
       const resultImageUrl = await generateEditedImage(
@@ -440,7 +444,8 @@ export default function App() {
         selectedImage.mimeType,
         prompt,
         apiKeyToUse,
-        provider
+        provider,
+        (status) => setStatusMessage(status)
       );
       
       const newGeneratedImage: GeneratedImage = {
@@ -455,6 +460,7 @@ export default function App() {
       setGeneratedImage(newGeneratedImage);
       setHistory(prev => [newGeneratedImage, ...prev]);
       setEditState({ status: 'success' });
+      setStatusMessage('');
     } catch (error: any) {
        console.error("Generation error:", error);
        let errorMessage = error.message || 'An unknown error occurred';
@@ -462,6 +468,7 @@ export default function App() {
        if (errorMessage === 'API_KEY_MISSING') {
            setShowApiKeyModal(true);
            setEditState({ status: 'idle' });
+           setStatusMessage('');
            return;
        }
        
@@ -471,7 +478,7 @@ export default function App() {
        }
 
        if (errorMessage === 'QUOTA_EXCEEDED') {
-           errorMessage = 'Rate limit reached. Auto-retries exhausted. Please wait 1 minute.';
+           errorMessage = 'Rate limit reached. Please wait 1 minute before trying again.';
        }
        
        if (errorMessage === 'BILLING_LIMIT_REACHED') {
@@ -486,6 +493,7 @@ export default function App() {
           status: 'error', 
           errorMessage 
         });
+       setStatusMessage('');
     }
   };
 
@@ -503,6 +511,7 @@ export default function App() {
     setHistory([]);
     setPrompt('');
     setEditState({ status: 'idle' });
+    setStatusMessage('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -765,7 +774,11 @@ export default function App() {
                             <div className="absolute inset-2 border-t-4 border-banana-200 border-l-4 border-transparent rounded-full animate-spin direction-reverse opacity-70"></div>
                           </div>
                           <h3 className="text-xl font-medium text-white mb-2">Creating Magic</h3>
-                          <p className="text-slate-400 text-sm">Gemini is reimagining your pixels...</p>
+                          {statusMessage ? (
+                              <p className="text-banana-400 text-sm animate-pulse">{statusMessage}</p>
+                          ) : (
+                              <p className="text-slate-400 text-sm">Gemini is reimagining your pixels...</p>
+                          )}
                         </div>
                       ) : (
                         <div className="opacity-50 flex flex-col items-center">

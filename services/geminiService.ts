@@ -60,7 +60,8 @@ export const generateEditedImage = async (
   mimeType: string,
   prompt: string,
   apiKey?: string,
-  provider: AIProvider = 'google'
+  provider: AIProvider = 'google',
+  onStatusUpdate?: (status: string) => void
 ): Promise<string> => {
   
   // SANITIZE KEY: Remove all whitespace/newlines which cause "Failed to fetch" in headers
@@ -72,11 +73,16 @@ export const generateEditedImage = async (
     if (!key) throw new Error("API_KEY_MISSING");
 
     let lastError: any = null;
-    let retryDelay = 2000; // Start with 2 seconds
+    // Aggressive retries for Free Tier: 2s, 5s, 10s, 15s, 20s (Total ~52s coverage)
+    const backoffDelays = [2000, 5000, 10000, 15000, 20000]; 
 
     // Retry loop for rate limits
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt <= backoffDelays.length; attempt++) {
         try {
+            if (attempt > 0 && onStatusUpdate) {
+                onStatusUpdate(`Retrying request... (Attempt ${attempt + 1})`);
+            }
+
             const ai = new GoogleGenAI({ apiKey: key });
             const response = await ai.models.generateContent({
                 model: GEMINI_MODEL_NAME,
@@ -118,10 +124,19 @@ export const generateEditedImage = async (
             const msg = error.message || error.toString();
             // Check for retryable errors: 429 (Too Many Requests) or 503 (Service Unavailable)
             if (error.status === 429 || msg.includes('429') || error.status === 503 || msg.includes('503')) {
-                if (attempt < 2) { // Don't wait after the last attempt
-                    console.log(`Waiting ${retryDelay}ms before retry...`);
-                    await delay(retryDelay);
-                    retryDelay *= 2; // Exponential backoff: 2s -> 4s -> 8s
+                if (attempt < backoffDelays.length) { 
+                    const waitTime = backoffDelays[attempt];
+                    console.log(`Waiting ${waitTime}ms before retry...`);
+                    
+                    // Countdown for UI
+                    if (onStatusUpdate) {
+                        for (let i = waitTime / 1000; i > 0; i--) {
+                            onStatusUpdate(`Rate limit hit. Waiting for free quota... ${i}s`);
+                            await delay(1000);
+                        }
+                    } else {
+                        await delay(waitTime);
+                    }
                     continue;
                 }
             }
@@ -148,8 +163,11 @@ export const generateEditedImage = async (
     if (!cleanKey) throw new Error("API_KEY_MISSING");
     
     try {
+        if (onStatusUpdate) onStatusUpdate("Preparing image for OpenAI...");
         const imageBlob = await prepareImageForOpenAI(base64Image, mimeType);
         const maskBlob = await createTransparentMask(1024); 
+
+        if (onStatusUpdate) onStatusUpdate("Sending to OpenAI...");
 
         const formData = new FormData();
         formData.append('image', imageBlob, 'image.png');
