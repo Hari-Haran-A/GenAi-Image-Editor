@@ -11,7 +11,8 @@ export const generateEditedImage = async (
 ): Promise<string> => {
   try {
     // Prioritize custom user key, fall back to environment variable
-    const apiKey = customApiKey || process.env.API_KEY;
+    // Ensure we trim whitespace which is a common copy-paste error on mobile
+    const apiKey = customApiKey?.trim() || process.env.API_KEY;
     
     // Explicitly check for API key to handle browser/deployment environments gracefully
     if (!apiKey) {
@@ -67,10 +68,20 @@ export const generateEditedImage = async (
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    // Propagate the specific API key error code if it was thrown above
+    
+    // Check for specific API Key errors from Google's response
+    const errorMessage = error.message?.toLowerCase() || error.toString().toLowerCase();
+    
+    if (errorMessage.includes("api key not valid") || 
+        errorMessage.includes("api_key_invalid") || 
+        errorMessage.includes("invalid argument") && errorMessage.includes("key")) {
+      throw new Error("INVALID_API_KEY");
+    }
+
     if (error.message === "API_KEY_MISSING") {
       throw error;
     }
+    
     throw new Error(error.message || "Failed to edit image.");
   }
 };
