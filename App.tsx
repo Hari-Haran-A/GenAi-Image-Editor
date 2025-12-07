@@ -84,12 +84,17 @@ const KeyIcon = () => (
 
 const ApiKeyModal = ({ 
   onClose, 
-  isVercelEnv 
+  isVercelEnv,
+  onSaveKey,
+  currentKey
 }: { 
   onClose: () => void;
   isVercelEnv: boolean;
+  onSaveKey: (key: string) => void;
+  currentKey: string;
 }) => {
   const [loading, setLoading] = useState(false);
+  const [inputKey, setInputKey] = useState(currentKey || '');
 
   const handleConnect = async () => {
     if ((window as any).aistudio) {
@@ -108,69 +113,91 @@ const ApiKeyModal = ({
     }
   };
 
+  const handleSaveManual = () => {
+    if (inputKey.trim()) {
+      onSaveKey(inputKey.trim());
+      onClose();
+    }
+  };
+
+  const handleClearKey = () => {
+    onSaveKey('');
+    setInputKey('');
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
       <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white">
+          <XMarkIcon />
+        </button>
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-16 h-16 bg-banana-400/10 rounded-full flex items-center justify-center text-banana-400 ring-1 ring-banana-400/20">
             <KeyIcon />
           </div>
           
           <h2 className="text-xl font-bold text-white">
-            {isVercelEnv ? "Missing API Configuration" : "Connect Google Account"}
+            API Key Configuration
           </h2>
           
-          {isVercelEnv ? (
-            <div className="text-slate-300 text-sm space-y-4 text-left w-full">
-              <p>
-                The application could not find the <code>API_KEY</code> environment variable. 
-                To generate images using Gemini 2.5 Flash, you must configure this in your deployment settings.
-              </p>
-              
-              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-3">
-                <h4 className="font-semibold text-slate-200">How to fix this:</h4>
-                <ol className="list-decimal list-inside space-y-2 text-slate-400">
-                  <li>
-                    Get a free API Key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.
-                  </li>
-                  <li>
-                    Go to your Vercel/Netlify project settings.
-                  </li>
-                  <li>
-                    Add a new Environment Variable:
-                    <div className="bg-slate-950 p-3 rounded-lg border border-slate-700 font-mono text-xs mt-2 select-all text-slate-300">
-                      API_KEY=your_actual_api_key_here
-                    </div>
-                  </li>
-                  <li>Redeploy or restart the application.</li>
-                </ol>
-              </div>
+          <div className="w-full text-left space-y-4 mt-2">
+            
+            {/* Manual Entry Section */}
+             <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700 space-y-3">
+               <label className="block text-sm font-semibold text-slate-300">Enter API Key Manually</label>
+               <input 
+                 type="password" 
+                 value={inputKey}
+                 onChange={(e) => setInputKey(e.target.value)}
+                 placeholder="AIzaSy..."
+                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-banana-500 focus:outline-none"
+               />
+               <div className="flex gap-2">
+                 <Button onClick={handleSaveManual} className="flex-1 py-2 text-sm" disabled={!inputKey.trim()}>
+                   Save Key
+                 </Button>
+                 {currentKey && (
+                   <Button onClick={handleClearKey} variant="secondary" className="px-3 py-2 text-sm text-red-400 hover:text-red-300 border-red-500/30 hover:bg-red-500/10">
+                     Remove
+                   </Button>
+                 )}
+               </div>
+               <p className="text-xs text-slate-500">
+                 Stored locally in your browser for this session.
+               </p>
+             </div>
 
-              <Button onClick={onClose} variant="secondary" className="w-full mt-2">
-                I've Updated It (Try Again)
-              </Button>
+            <div className="relative py-2">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-700"></div></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-800 px-2 text-slate-500">OR</span></div>
             </div>
-          ) : (
-            <>
-              <p className="text-slate-300">
-                To generate images, you need to connect your Google Cloud Project with a valid Gemini API key.
-              </p>
-              <Button 
-                onClick={handleConnect} 
-                isLoading={loading}
-                className="w-full"
-              >
-                Connect Google Account
-              </Button>
-              <p className="text-xs text-slate-500 mt-2">
-                This will open a secure dialog to select your project.
-                <br/>
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="underline hover:text-banana-400">
-                  Billing information
-                </a>
-              </p>
-            </>
-          )}
+
+            {isVercelEnv ? (
+              <div className="text-slate-300 text-sm space-y-3">
+                 <p>For permanent deployment, configure your environment variables:</p>
+                 <div className="bg-slate-950 p-3 rounded-lg border border-slate-700 font-mono text-xs select-all text-slate-300">
+                    API_KEY=your_key_here
+                 </div>
+                 <div className="text-xs text-slate-500">
+                   Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-banana-400 hover:underline">Google AI Studio</a>.
+                 </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleConnect} 
+                  isLoading={loading}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Connect Google Account
+                </Button>
+                <p className="text-xs text-slate-500 text-center">
+                  Securely connects via AI Studio (Preview Only)
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -188,9 +215,82 @@ export default function App() {
   
   // API Key State
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKey, setApiKey] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  // Load state and API key from localStorage on mount
+  useEffect(() => {
+    try {
+      // Load API Key
+      const storedKey = localStorage.getItem('gemini_api_key');
+      if (storedKey) {
+        setApiKey(storedKey);
+      }
+
+      // Load App State
+      const savedState = localStorage.getItem('genai-editor-state');
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.prompt) setPrompt(parsed.prompt);
+        if (parsed.history && Array.isArray(parsed.history)) setHistory(parsed.history);
+        
+        // Only restore generated image if it wasn't cleared intentionally
+        if (parsed.generatedImage) setGeneratedImage(parsed.generatedImage);
+      }
+    } catch (e) {
+      console.warn("Failed to load state from local storage", e);
+    }
+  }, []);
+
+  // Save state to localStorage helper
+  const saveToLocalStorage = (newState: Partial<{ prompt: string, history: GeneratedImage[], generatedImage: GeneratedImage | null }>) => {
+    try {
+      const currentStateString = localStorage.getItem('genai-editor-state');
+      const currentState = currentStateString ? JSON.parse(currentStateString) : {};
+      
+      const mergedState = { ...currentState, ...newState };
+      
+      // Simple quota management: Limit history length if needed, or remove heavy image data if we hit limits
+      // For this demo, we'll try to save everything but handle the error if it's too big
+      localStorage.setItem('genai-editor-state', JSON.stringify(mergedState));
+    } catch (e) {
+      console.warn("Storage quota exceeded or save failed. Clearing heavy image data.");
+      // Fallback: Try saving only text data
+      try {
+        const { history, generatedImage, ...rest } = newState as any;
+        // Strip base64 from history if needed, or just save current prompt
+        localStorage.setItem('genai-editor-state', JSON.stringify({ 
+           prompt: newState.prompt 
+        }));
+      } catch (e2) {
+        console.error("Critical storage failure", e2);
+      }
+    }
+  };
+
+  // Auto-save effects
+  useEffect(() => {
+    saveToLocalStorage({ prompt });
+  }, [prompt]);
+
+  useEffect(() => {
+    saveToLocalStorage({ history });
+  }, [history]);
+
+  useEffect(() => {
+    saveToLocalStorage({ generatedImage });
+  }, [generatedImage]);
+
+  const handleSaveApiKey = (key: string) => {
+    setApiKey(key);
+    if (key) {
+      localStorage.setItem('gemini_api_key', key);
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -258,7 +358,8 @@ export default function App() {
       const resultImageUrl = await generateEditedImage(
         selectedImage.base64,
         selectedImage.mimeType,
-        prompt
+        prompt,
+        apiKey // Pass the manual API key if present
       );
       
       const newGeneratedImage: GeneratedImage = {
@@ -303,6 +404,8 @@ export default function App() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    // Clear state from local storage too if needed, or just let auto-save handle it
+    saveToLocalStorage({ generatedImage: null, history: [] });
   };
 
   const handleClearHistory = () => {
@@ -390,6 +493,8 @@ export default function App() {
         <ApiKeyModal 
           onClose={() => setShowApiKeyModal(false)} 
           isVercelEnv={typeof (window as any).aistudio === 'undefined'}
+          onSaveKey={handleSaveApiKey}
+          currentKey={apiKey}
         />
       )}
 
@@ -405,8 +510,8 @@ export default function App() {
               <p className="text-slate-400 text-xs md:text-sm font-medium">Powered by Gemini 2.5</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={() => setShowApiKeyModal(true)} className="text-xs text-slate-500 hover:text-banana-400">
-             <KeyIcon />
+          <Button variant="ghost" onClick={() => setShowApiKeyModal(true)} className="text-xs text-slate-500 hover:text-banana-400 flex items-center gap-2">
+             <KeyIcon /> {apiKey ? <span className="text-green-400 hidden sm:inline">• Key Set</span> : <span className="hidden sm:inline">Set Key</span>}
           </Button>
         </div>
       </div>

@@ -6,10 +6,12 @@ const MODEL_NAME = 'gemini-2.5-flash-image';
 export const generateEditedImage = async (
   base64Image: string,
   mimeType: string,
-  prompt: string
+  prompt: string,
+  customApiKey?: string
 ): Promise<string> => {
   try {
-    const apiKey = process.env.API_KEY;
+    // Prioritize custom user key, fall back to environment variable
+    const apiKey = customApiKey || process.env.API_KEY;
     
     // Explicitly check for API key to handle browser/deployment environments gracefully
     if (!apiKey) {
